@@ -1,0 +1,190 @@
+{# Shared building blocks for the project / publication detail pages.
+   Markup mirrors the sections that already existed (d2c_service_wrapper > container > h3 + d2c_card_wrapper)
+   so nothing new needs CSS.  Heading size uses clamp(): identical to the old 32pt on laptops, a little smaller on phones. #}
+
+{% macro heading(text) -%}
+<h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">{{ text }}</h3>
+{%- endmacro %}
+
+{# ---- rich-text section: only drawn when there is content --------------------------------------------- #}
+{% macro html_section(title, content) %}
+{% if content and content|trim %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading(title) }}
+    <div class="row d2c_card_wrapper align-items-center" style="color: white;">
+      {{ content | safe }}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- plain-text section (escaped) ------------------------------------------------------------------ #}
+{% macro text_section(title, content) %}
+{% if content and content|trim %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading(title) }}
+    <div class="row d2c_card_wrapper align-items-center" style="color: white;">
+      <p style="color: white;">{{ content }}</p>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- a row of images (screenshots / logos): images = list of 'uploads/...' paths, blanks skipped ---- #}
+{% macro image_row(title, images, height, col='col-lg-3') %}
+{% set shown = images | select | list %}
+{% if shown %}
+<section>
+  <div class="container">
+    {{ heading(title) }}
+    <div class="row">
+      {% for img in shown %}
+      <div class="{{ col }} d-flex justify-content-center align-items-center" style="padding: 12pt;">
+        <img src="{{ url_for('static', filename=img) }}" style="height: {{ height }}pt; max-width: 100%; object-fit: contain;" alt="">
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- one wide image (architecture diagram) -------------------------------------------------------- #}
+{% macro wide_image(title, img) %}
+{% if img %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading(title) }}
+    <div class="d-flex justify-content-center">
+      <img src="{{ url_for('static', filename=img) }}" class="img-fluid" style="max-height: 420pt; object-fit: contain;" alt="">
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- up to two highlight cards (Insights / Key metrics / Learning outcomes) ------------------------ #}
+{% macro highlight_cards(title, a, b) %}
+{% if (a and a|trim) or (b and b|trim) %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading(title) }}
+    <div class="row">
+      {% for item in [a, b] %}{% if item and item|trim %}
+      <div class="col-lg-3 d-flex justify-content-start align-items-center" style="padding: 12pt;">
+        <div class="d2c_card_wrapper">
+          {{ item | safe }}
+        </div>
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- chips (tools, platforms, keywords) ------------------------------------------------------------ #}
+{% macro chips(items, center=True) %}
+{% if items %}
+<div class="d-flex flex-wrap {{ 'justify-content-center' if center else '' }} mb-3" style="gap: 8px;">
+  {% for t in items %}
+  <span style="background: rgba(255,255,255,0.15); color: white; font-weight: 500; font-size: 0.85rem; padding: 0.4em 0.85em; border-radius: 50rem;">{{ t }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+{% endmacro %}
+
+{# ---- under-the-title line for projects: role - timeline + tool chips -------------------------------- #}
+{% macro project_meta(rec) %}
+{% set bits = [rec.role, rec.timeline] | select | list %}
+{% if bits %}<p style="text-align:center; opacity:0.85;">{{ bits | join(' · ') }}</p>{% endif %}
+{{ chips(rec.tech_stack | tags) }}
+{% endmacro %}
+
+{# ---- video overview + 3D model (+ optional representational image): each column only if switched on -- #}
+{% macro model_src(rec) -%}
+{%- if rec.model_url.startswith(('http://', 'https://', '//')) -%}{{ rec.model_url }}{%- else -%}{{ url_for('static', filename=rec.model_url) }}{%- endif -%}
+{%- endmacro %}
+
+{% macro media_row(rec, image='') %}
+{% set vid = video_info(rec.video_url) if rec.has_video else none %}
+{% set n = (1 if vid else 0) + (1 if rec.has_model else 0) + (1 if image else 0) %}
+{% if n %}
+{% set col = 'col-lg-4' if n == 3 else 'col-lg-6' %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <div class="row align-items-center justify-content-center">
+
+      {% if vid %}
+      <!-- VIDEO OVERVIEW COLUMN -->
+      <div class="{{ col }} d-flex justify-content-center mb-4 mb-lg-0">
+        {% if vid[0] == 'video' %}
+        <video controls preload="metadata" src="{{ vid[1] }}"
+               style="width:100%; max-width:560px; aspect-ratio:16/9; background:#000; border-radius:12px;"></video>
+        {% else %}
+        <iframe src="{{ vid[1] }}" title="Video overview" loading="lazy"
+                allow="encrypted-media; picture-in-picture; web-share; fullscreen"
+                referrerpolicy="strict-origin-when-cross-origin" allowfullscreen
+                style="width:100%; max-width:560px; aspect-ratio:16/9; border:0; border-radius:12px;"></iframe>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if rec.has_model %}
+      <!-- 3D MODEL VIEWER COLUMN -->
+      <div class="{{ col }} d-flex justify-content-center mb-4 mb-lg-0">
+        <model-viewer src="{{ model_src(rec) }}" alt="3D model: {{ rec.title }}"
+                      camera-controls auto-rotate touch-action="pan-y" shadow-intensity="1"
+                      ar ar-modes="webxr scene-viewer quick-look" loading="lazy"
+                      style="width:100%; max-width:560px; height: clamp(240px, 56vw, 315px); border-radius:12px; background: rgba(255,255,255,0.08);">
+        </model-viewer>
+      </div>
+      {% endif %}
+
+      {% if image %}
+      <!-- REPRESENTATIONAL IMAGE COLUMN -->
+      <div class="{{ col }} d-flex justify-content-center">
+        <img class="img-fluid publication-rep-img" src="{{ url_for('static', filename=image) }}" style="object-fit:contain;" alt="">
+      </div>
+      {% endif %}
+
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- cards for Commercial Artifacts / Resources ------------------------------------------------------ #}
+{% macro link_cards(title, items) %}
+{% if items %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading(title) }}
+    <div class="row">
+      {% for it in items %}
+      <div class="col-lg-4" style="padding: 12pt;">
+        {% if it.url %}<a href="{{ it.url }}" target="_blank" rel="noopener" style="text-decoration: none; color: inherit;">{% endif %}
+        <div class="d2c_card_wrapper" style="text-align: left;">
+          <h4>{{ it.name }}</h4>
+          {% if it.note %}<p>{{ it.note }}</p>{% endif %}
+          {% if it.url %}<p style="color: whitesmoke; opacity: 75%;">Open →</p>{% endif %}
+        </div>
+        {% if it.url %}</a>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endmacro %}
+
+{# ---- the columns every template shares, drawn at the end of a detail page --------------------------- #}
+{% macro common_sections(rec) %}
+{{ html_section('Awards & Recognition', rec.awards) }}
+{{ link_cards('Commercial Artifacts', rec.commercial_artifacts | lines) }}
+{{ link_cards('Resources & Links', rec.resources | lines) }}
+{% endmacro %}

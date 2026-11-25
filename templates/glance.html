@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="icon" href="data:,">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Glance page constructor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+      /* admin tool only - the public pages keep using style.css / responsive.css untouched */
+      #frame-wrap { width: 100%; max-width: 600px; margin: 0 auto; transition: max-width .2s; }
+      #preview { width: 100%; aspect-ratio: 1 / 1.4; border: 1px solid #ced4da; border-radius: 6px; background: #fff; display: block; }
+      .sticky-lg { position: sticky; top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div class="container py-3">
+
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="m-0">Glance page constructor</h3>
+        <div class="d-flex gap-2">
+          <a href="/edit" class="btn btn-secondary btn-sm">← Back to edit</a>
+          <a href="{{ url_for('resume_detail') }}" class="btn btn-outline-secondary btn-sm" target="_blank">View "At a Glance"</a>
+        </div>
+      </div>
+      <p class="text-muted">Builds one page of "At a Glance" in the same layout as your existing pages: a big title, an italic line under it and a rounded picture.</p>
+
+      <div class="row g-4">
+
+        <!-- ================= form ================= -->
+        <div class="col-lg-5">
+
+          <div class="border rounded p-3 mb-3">
+            <label class="form-label" for="prefill">Start from a project / publication (optional)</label>
+            <select class="form-select" id="prefill">
+              <option value="">- none -</option>
+              {% if projects %}
+              <optgroup label="Projects">
+                {% for p in projects %}
+                <option value="project-{{ p.id }}" data-label="{{ p.template_label }}" data-title="{{ p.title }}" data-img="{{ url_for('static', filename=(p.ss1 or p.icon)) if (p.ss1 or p.icon) }}">{{ p.title }}  ({{ p.template_label }})</option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+              {% if pubs %}
+              <optgroup label="Publications">
+                {% for p in pubs %}
+                <option value="pub-{{ p.id }}" data-label="{{ p.template_label }}" data-title="{{ p.title }}" data-img="{{ url_for('static', filename=(p.rep_image or p.icon)) if (p.rep_image or p.icon) }}">{{ p.title }}  ({{ p.template_label }})</option>
+                {% endfor %}
+              </optgroup>
+              {% endif %}
+            </select>
+            <div class="form-text">Fills the title with the template name, the italic line with the work's title and takes its picture. Change anything afterwards.</div>
+          </div>
+
+          <div class="border rounded p-3 mb-3">
+            <label class="form-label" for="existing">Edit an existing page</label>
+            <div class="input-group">
+              <select class="form-select" id="existing">
+                <option value="">- choose -</option>
+                {% for pg in pages %}
+                <option value="{{ pg.id }}" data-file="{{ pg.page }}">{{ pg.title }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-primary" type="button" id="load-existing">Load</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="form-label" for="f-title">Title (big heading)</label>
+            <input type="text" class="form-control" id="f-title" list="title-suggestions" placeholder="e.g. Educational Technology" autocomplete="off">
+            <datalist id="title-suggestions">
+              {% for key, label in schema.TEMPLATES %}<option value="{{ label }}">{% endfor %}
+            </datalist>
+          </div>
+
+          <div>
+            <label class="form-label" for="f-subtitle">Italic line</label>
+            <input type="text" class="form-control" id="f-subtitle" placeholder="e.g. Project name: a one-line summary" autocomplete="off">
+          </div>
+
+          <div>
+            <label class="form-label" for="f-image">Picture</label>
+            <input type="file" class="form-control" id="f-image" accept="image/*">
+            <div class="d-flex flex-wrap align-items-center gap-3 mt-1">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="f-shrink" checked>
+                <label class="form-check-label" for="f-shrink">Shrink large pictures (keeps the page small)</label>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="clear-image">Remove picture</button>
+            </div>
+            <div class="form-text" id="image-info"></div>
+          </div>
+
+          <div>
+            <label class="form-label" for="f-height">Picture height: <span id="height-out">150</span> px <span class="text-muted">(your existing pages use 150)</span></label>
+            <input type="range" class="form-range" id="f-height" min="100" max="420" step="10" value="150">
+          </div>
+
+          <div>
+            <label class="form-label" for="f-name">Name in the "My works" list (only you see this)</label>
+            <input type="text" class="form-control" id="f-name" autocomplete="off">
+          </div>
+
+          <div class="d-flex flex-wrap gap-2 mt-4">
+            <button type="button" class="btn btn-primary" id="save-new">Add to At a Glance</button>
+            <button type="button" class="btn btn-success" id="save-replace" style="display:none;">Update the loaded page</button>
+            <button type="button" class="btn btn-outline-secondary" id="download">Download .html</button>
+            <button type="button" class="btn btn-outline-danger" id="reset">Start over</button>
+          </div>
+          <div id="status" class="mt-3" role="status"></div>
+        </div>
+
+        <!-- ================= preview ================= -->
+        <div class="col-lg-7">
+          <div class="sticky-lg">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Preview</strong>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Preview width">
+                <button type="button" class="btn btn-outline-secondary active" data-width="600">Laptop</button>
+                <button type="button" class="btn btn-outline-secondary" data-width="340">Phone</button>
+              </div>
+            </div>
+            <div id="frame-wrap"><iframe id="preview" title="Preview"></iframe></div>
+            <div class="form-text text-center mt-1" id="size-info"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <script>var RESUME_URL = "{{ url_for('resume_detail') }}";</script>
+    {% raw %}
+    <script>
+    (function () {
+      // --- the page layout: identical markup / css / ids to your existing "glance" pages -------------------------
+      function pageCss(h) {
+        return "* { box-sizing: border-box; } body {margin: 0;}" +
+          ".gjs-row{display:table;padding-top:10px;padding-right:10px;padding-bottom:10px;padding-left:10px;width:100%;}" +
+          ".gjs-cell{width:8%;display:table-cell;height:75px;}" +
+          "#i8kc-2{display:flex;justify-content:center;align-items:center;align-content:center;position:static;height:100px;text-align:center;}" +
+          "#iyqy-2{text-align:center;font-size:50px;display:block;align-content:center;justify-content:center;align-items:center;padding:10px;}" +
+          "#ife4{text-align:center;order:1;flex-basis:100%;align-self:center;display:flex;justify-content:center;align-content:center;width:50%;}" +
+          "#iapfd{text-align:center;display:flex;justify-content:center;align-items:center;align-content:center;}" +
+          "#iar36{width:871px;display:flex;justify-content:center;align-items:center;align-content:center;flex-basis:100%;flex-wrap:wrap;}" +
+          "#ivoas{padding:10px;font-size:20px;}" +
+          "#iwulv{display:flex;justify-content:center;align-items:center;align-content:center;}" +
+          "#if8mz{flex-basis:100%;display:flex;align-content:center;justify-content:center;align-self:center;align-items:center;height:" + (h + 10) + "px;}" +
+          "#ig-img{color:black;height:" + h + "px;border-radius:15px 15px 15px 15px;box-shadow:0 0 5px 0 black ;align-self:center;}" +
+          "@media (max-width: 768px){.gjs-cell{width:100%;display:block;}}" +
+          "@media (max-width: 480px){#iyqy-2{font-size:30px;width:100%;}#ivoas{align-self:center;display:flex;}#i8kc-2{flex-wrap:nowrap;height:100px;}}";
+      }
+      function esc(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+      function buildPage(title, subtitle, image, h) {
+        return "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n" +
+          "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
+          "<style>\n" + pageCss(h) + "\n</style>\n</head>\n" +
+          "<body id=\"iguu\"><div id=\"i8kc-2\" class=\"gjs-row\"><div class=\"gjs-cell\" id=\"ife4\"><div id=\"iyqy-2\">" + esc(title) + "</div></div></div>" +
+          "<div class=\"gjs-row\" id=\"iapfd\"><div class=\"gjs-cell\" id=\"iar36\"><div id=\"ivoas\"><i id=\"iiq5j\">" + esc(subtitle) + "</i></div></div></div>" +
+          (image ? "<div class=\"gjs-row\" id=\"iwulv\"><div class=\"gjs-cell\" id=\"if8mz\"><img id=\"ig-img\" src=\"" + image + "\" alt=\"" + esc(title) + "\"/></div></div>" : "") +
+          "</body>\n</html>\n";
+      }
+
+      // --- state + elements ----------------------------------------------------------------------------------
+      var $ = function (id) { return document.getElementById(id); };
+      var state = { image: "", replaceId: null };
+      var el = { title: $("f-title"), subtitle: $("f-subtitle"), file: $("f-image"), shrink: $("f-shrink"), height: $("f-height"),
+                 name: $("f-name"), status: $("status"), preview: $("preview"), imageInfo: $("image-info"), sizeInfo: $("size-info"),
+                 saveReplace: $("save-replace") };
+      var nameTouched = false;
+
+      function html() { return buildPage(el.title.value, el.subtitle.value, state.image, parseInt(el.height.value, 10)); }
+      function kb(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+      function say(msg, kind) { el.status.className = "mt-3 alert alert-" + (kind || "secondary") + " py-2"; el.status.innerHTML = msg; }
+
+      function refresh() {
+        $("height-out").textContent = el.height.value;
+        var out = html();
+        el.preview.srcdoc = out;
+        el.sizeInfo.textContent = "Page size: " + kb(new Blob([out]).size);
+        if (!nameTouched) { el.name.value = el.subtitle.value || el.title.value; }
+      }
+
+      // --- image handling (optionally shrink, so a page is not several MB) ---------------------------------------
+      function setImage(blob, label) {
+        var type = blob.type || "";
+        if (!el.shrink.checked || type === "image/gif" || type === "image/svg+xml") {   // gif / svg: keep as is (animation, vectors)
+          var fr = new FileReader();
+          fr.onload = function () { state.image = fr.result; el.imageInfo.textContent = (label || "") + " " + kb(blob.size); refresh(); };
+          fr.readAsDataURL(blob);
+          return;
+        }
+        var url = URL.createObjectURL(blob), im = new Image();
+        im.onload = function () {
+          var max = 900, scale = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+          var c = document.createElement("canvas");
+          c.width = Math.round(im.naturalWidth * scale); c.height = Math.round(im.naturalHeight * scale);
+          c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+          state.image = type === "image/jpeg" ? c.toDataURL("image/jpeg", 0.9) : c.toDataURL("image/png");
+          URL.revokeObjectURL(url);
+          el.imageInfo.textContent = (label || "") + " " + im.naturalWidth + "x" + im.naturalHeight + " → " + c.width + "x" + c.height;
+          refresh();
+        };
+        im.onerror = function () { say("That picture could not be read.", "danger"); };
+        im.src = url;
+      }
+
+      el.file.addEventListener("change", function () { if (el.file.files[0]) { setImage(el.file.files[0], el.file.files[0].name); } });
+      $("clear-image").addEventListener("click", function () { state.image = ""; el.file.value = ""; el.imageInfo.textContent = ""; refresh(); });
+      el.shrink.addEventListener("change", function () { if (el.file.files[0]) { setImage(el.file.files[0], el.file.files[0].name); } });
+      [el.title, el.subtitle, el.height].forEach(function (i) { i.addEventListener("input", refresh); });
+      el.name.addEventListener("input", function () { nameTouched = true; });
+
+      // --- prefill from a project / publication -----------------------------------------------------------------
+      $("prefill").addEventListener("change", function () {
+        var opt = this.options[this.selectedIndex];
+        if (!opt.value) { return; }
+        el.title.value = opt.dataset.label || "";
+        el.subtitle.value = opt.dataset.title || "";
+        nameTouched = false;
+        if (opt.dataset.img) {
+          fetch(opt.dataset.img).then(function (r) { return r.blob(); }).then(function (b) { setImage(b, "from the work:"); })
+            .catch(function () { say("Could not load that work's picture - upload one instead.", "warning"); refresh(); });
+        } else { state.image = ""; refresh(); }
+      });
+
+      // --- load an existing page into the form ----------------------------------------------------------------------
+      $("load-existing").addEventListener("click", function () {
+        var opt = $("existing").options[$("existing").selectedIndex];
+        if (!opt.value) { return; }
+        say("Loading…");
+        fetch("/static/uploads/html/" + encodeURIComponent(opt.dataset.file)).then(function (r) { return r.text(); }).then(function (text) {
+          var doc = new DOMParser().parseFromString(text, "text/html");
+          var t = doc.getElementById("iyqy-2"), s = doc.getElementById("ivoas"), im = doc.querySelector("#if8mz img, img");
+          if (!t) { throw new Error("This page was not made with the glance layout (no title block found)."); }
+          el.title.value = t.textContent.trim();
+          el.subtitle.value = s ? s.textContent.trim() : "";
+          state.image = im ? im.getAttribute("src") : "";
+          var hh = 150;                                   // picture height lives in the page's css, under the picture's id
+          if (im && im.id) {
+            var m = text.match(new RegExp("#" + im.id.replace(/[^\w-]/g, "") + "\\{[^}]*?height:\\s*(\\d+)px"));
+            if (m) { hh = parseInt(m[1], 10); }
+          }
+          el.height.value = Math.min(420, Math.max(100, hh || 150));
+          el.name.value = opt.textContent.trim(); nameTouched = true;
+          state.replaceId = opt.value; el.saveReplace.style.display = "";
+          el.imageInfo.textContent = state.image ? "picture taken from the loaded page" : "";
+          refresh(); say("Loaded “" + esc(opt.textContent.trim()) + "”. <b>Update the loaded page</b> overwrites it; <b>Add</b> saves a copy.", "info");
+        }).catch(function (e) { say(esc(e.message || e), "danger"); });
+      });
+
+      // --- preview width ------------------------------------------------------------------------------------------------
+      document.querySelectorAll("[data-width]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          document.querySelectorAll("[data-width]").forEach(function (x) { x.classList.remove("active"); });
+          b.classList.add("active"); $("frame-wrap").style.maxWidth = b.dataset.width + "px";
+        });
+      });
+
+      // --- save / download --------------------------------------------------------------------------------------------
+      function save(replace) {
+        if (!el.title.value.trim()) { say("Add a title first.", "warning"); return; }
+        var fd = new FormData();
+        fd.append("title", el.name.value.trim() || el.title.value.trim());
+        fd.append("page", new Blob([html()], { type: "text/html" }), "page.html");   // sent as a file: pages with a picture can be several MB
+        if (replace && state.replaceId) { fd.append("replace_id", state.replaceId); }
+        say("Saving…");
+        fetch("/glance/save", { method: "POST", body: fd }).then(function (r) {
+          if (!r.ok) { throw new Error("The server said " + r.status + "."); }
+          return r.json();
+        }).then(function () {
+          say((replace ? "Page updated." : "Added.") + " <a href=\"" + RESUME_URL + "\" target=\"_blank\">Open At a Glance</a>. New pages start at the front - drag them into place under <a href=\"/edit\">Edit → Portfolio</a>.", "success");
+          if (!replace) { setTimeout(function () { location.reload(); }, 2500); }
+        }).catch(function (e) { say(esc(e.message || e), "danger"); });
+      }
+      $("save-new").addEventListener("click", function () { save(false); });
+      el.saveReplace.addEventListener("click", function () { save(true); });
+      $("download").addEventListener("click", function () {
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([html()], { type: "text/html" }));
+        a.download = (el.name.value || el.title.value || "glance").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_") + ".html";
+        a.click();
+      });
+      $("reset").addEventListener("click", function () { location.reload(); });
+
+      refresh();
+    })();
+    </script>
+    {% endraw %}
+  </body>
+</html>

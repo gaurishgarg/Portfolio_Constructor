@@ -1,0 +1,26 @@
+{# Template "Tech for AR-VR": systems / engineering write-up.  Sections without content are skipped. #}
+{% from '_detail_macros.html' import html_section, text_section, image_row, wide_image, highlight_cards, chips, heading %}
+
+{{ html_section('Problem & Motivation', project.problem_motivation) }}
+{{ html_section('Technical Challenge', project.technical_challenge) }}
+{{ html_section('Objectives', project.objectives) }}
+
+{{ wide_image('System Architecture', project.architecture_image) }}
+{{ html_section('System Overview & Pipeline', project.system_overview) }}
+{{ html_section('Implementation Details', project.implementation) }}
+
+{% if project.platforms|tags %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading('Target Platforms & Devices') }}
+    {{ chips(project.platforms|tags, False) }}
+  </div>
+</section>
+{% endif %}
+
+{{ image_row('Demo', [project.ss1, project.ss2, project.ss3, project.ss4], 250, 'col-lg-4 col-md-6') }}
+{{ image_row('Tech Stack', [project.bb1, project.bb2, project.bb3, project.bb4], 130) }}
+
+{{ html_section('Performance & Evaluation', project.evaluation) }}
+{{ highlight_cards('Key Metrics', project.insight1, project.insight2) }}
+{{ html_section('Limitations & Future Work', project.limitations) }}

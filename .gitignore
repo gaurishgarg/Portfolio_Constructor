@@ -1,0 +1,30 @@
+# ---- secrets: never commit these ----
+.env
+.env.*
+!.env.example
+
+# ---- your content: the database and every uploaded file stay on your computer ----
+instance/*
+!instance/.gitkeep
+static/uploads/*
+!static/uploads/.gitkeep
+
+# ---- generated files ----
+build/
+__pycache__/
+*.py[cod]
+
+# ---- local helper scripts (e.g. password hashing experiments) ----
+dummy.py
+
+# ---- virtual environments ----
+.venv/
+venv/
+env/
+
+# ---- editors / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

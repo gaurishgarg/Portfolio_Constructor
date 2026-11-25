@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="data:,">
+    <!-- default meta title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- OG Meta Tag -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta property="og:title" content="{{ about.name if about else 'Portfolio' }}">
+    <meta property="og:description" content="{{ about.name if about else 'My' }}'s portfolio">
+    <meta property="og:image" content="{{ url_for('static', filename=misc.logo) }}">
+    <!-- title -->
+    <title>{{ about.name if about else 'Portfolio' }}</title>
+    <!-- font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- font awesome 5 cdn/ icon link -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Slider CSS Link -->
+     
+    <link rel="stylesheet" href="{{ url_for('static', filename='lib/slick-1.8.1/slick/slick.css') }}">
+
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='lib/slick-1.8.1/slick/slick-theme.css') }}">
+    <!-- fancybox image gallery -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.css">
+    <!-- bootstrap css -->
+     
+    <link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-5/css/bootstrap.min.css') }}">
+    <!-- main css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/style.css') }}">
+    <!-- responsive css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/responsive.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/laptop-fit.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='assets/css/section-flow.css') }}">
+</head>
+<body>
+    <!--  preloader start  -->
+    <div class="preloader">
+        <img src="{{ url_for('static', filename=misc.loader) }}" alt="Preloader Logo">
+    </div>
+    <!--  preloader end  -->
+
+    <!-- header start -->
+    <header class="d2c_navbar sticky-top">
+        <div class="container">
+            <!-- navbar -->
+            <nav class="navbar navbar-expand-lg px-0 py-0" id="d2c_main_nav">
+                <!-- logo -->
+                <a class="navbar-brand" href="#"><img src="{{ url_for('static', filename=misc.logo) }}" class="w-100" alt="Logo" style="max-width: 180px; max-height: 46px;"></a>
+                <!-- logo -->
+                <!-- hamburger -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span><i class="fas fa-bars"></i></span>
+                </button>
+                <!-- hamburger -->
+                <!-- nav item -->
+                <div class="collapse navbar-collapse js-clone-nav justify-content-end">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#home">About <span class="sr-only">(current)</span></a>
+                        </li>
+                        {% if nav.education %}
+                           <li class="nav-item">
+                            <a class="nav-link" href="#scholastics">Scholastics</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.pubs %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="#publication">Publications</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.projects %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="#project">Projects</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.artifacts %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('artifacts_page') }}">Indie Projects</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.skills %}
+                         <li class="nav-item">
+                            <a class="nav-link" href="#skills">Skills</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.writings %}
+                           <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('writing_detail') }}">Writing</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.conferences %}
+                           <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('conferences_page') }}">Conferences</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.code %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('code_page') }}">Code</a>
+                        </li>
+                        {% endif %}
+                        {% if nav.pages %}
+                           <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('resume_detail') }}">At a Glance</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <!-- <a href="#contact" class="btn d-none d-lg-block">Get In touch</a> -->
+               <!-- nav item -->
+            </nav>
+            <!-- navbar -->
+            <!-- tab and mobile view -->
+            <div class="collapse navbar-collapse d2c_mobile_view" id="navbarSupportedContent">
+                <div class="show_width container">
+                    <div class="text-right">
+                        <button class="navbar-toggler d2c_cross_btn p-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                            <span><i class="fa fa-times"></i></span>
+                        </button>
+                    </div>
+                    
+                    <div class="navbar px-0 d2c_mobile_view_body"></div>
+                </div>
+            </div>
+            <!-- tab and mobile view -->
+        </div>
+    </header>
+    <!-- header end -->
+    
+    <main>
+        <div class="d2c_hero_bg">
+            
+            <!-- hero start -->
+            <section class="d2c_hero_wrapper" id="home">
+                <div class="container">
+                    <div class="row align-items-center">
+                        <div class="col-xl-4 order-last order-lg-first">
+                            <div class="">
+                                <div class="">
+                               
+                                    <img src="{{ url_for('static', filename=about.dp) }}" class="img-fluid" alt="{{ about.name }}">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-8 order-first order-lg-first">                                                       
+                            <h1>Hi! <span> I'm {{ about.name }}</span></h1>
+                            <p style="text-align: justify;"> {{ about.about | safe}} </p>
+                            <div class="row justify-content-center align-items-center">
+                                
+                            <div class="col-auto my-2">
+                                <a href="#myfooter" class="btn">Contact Me</a>
+                            </div>
+                            <div class="col-auto my-2">
+                                <a href="{{ url_for('static', filename=misc.resume) }}" class="btn" download>Download Resume</a>
+                            </div>
+                            {% if nav.pages %}
+                            <div class="col-auto my-2">
+                                <a href="{{ url_for('resume_detail') }}" class="btn">At a Glance</a>                            
+                            </div>
+                            {% endif %}
+                            </div>
+
+
+
+
+                            
+                            
+                
+                        </div>
+                        
+                    </div>
+                </div>
+            </section>
+
+                    {% if education %}
+        <hr class="soft-divider" style="border:0; height:3px; width:64px; margin:2.5rem auto; opacity:.5; border-radius:3px; background:linear-gradient(90deg, rgba(255,255,255,0), #fff 30%, #fff 70%, rgba(255,255,255,0));">
+
+       <section class="d2c_service_wrapper" id="scholastics">
+
+                <div class="container">
+
+                    <H2 style="color: white;">Scholastics</H2>
+
+
+                    <div class="row card-tag-row">
+                                {% for value in education %}
+                                <div class="col-xl-4" style="padding: 12pt;">
+                                    <div class="d2c_card_wrapper edu-card" style="text-align: left; margin: 12pt auto;">
+                                        <!-- icon wrapper prevnts cnetering -->
+                                        <div class="d2c_icon_wrapper"> 
+                                            <img src = "{{ url_for('static', filename=value.icon) }}" style="margin: auto auto; max-width: 50px;  max-height: 50px; object-fit: contain; display: block">
+                                        </div>
+                                        <span class="card-tag is-{{ value.status|lower }}">{{ value.status }}</span>
+                                        <h4>{{value.degree}} in {{value.specialisation}} from {{value.institute}}{% if value.grades %} with {{value.grades}}{% endif %}</h4>
+                                        {% if value.html %}<div class="edu-extra">{{value.html | safe}}</div>{% endif %}
+                              
+                                    </div>
+                                </div>
+                                {% endfor %}                                
+                            </div>
+
+                        </div>
+                  
+            </section>
+        {% endif %}
+
+        {# Publications / Projects: a section only appears when it has an entry, and each template
+           (HCI & AR-VR, Tech for AR-VR, Educational Technology) gets its own sub-heading once more than one is in use #}
+        {% if pubs %}
+        <hr class="soft-divider" style="border:0; height:3px; width:64px; margin:2.5rem auto; opacity:.5; border-radius:3px; background:linear-gradient(90deg, rgba(255,255,255,0), #fff 30%, #fff 70%, rgba(255,255,255,0));">
+
+            <section class="d2c_service_wrapper" id="publication">
+
+                <div class="container">
+                                        <H2 style="color: white;">Publications</H2>
+                   <div class="row card-tag-row">
+                    {% for group in pub_groups %}
+                                {% for value in group.entries %}
+
+                                <div class="col-xl-4" style="padding: 12pt;">
+                                    <a href="{{ url_for('publication_detail', id=value.id) }}" style="text-decoration: none; color: inherit;">
+
+                                    <div class="d2c_card_wrapper" style="text-align: left; margin: 12pt auto;">
+                                        <!-- icon wrapper prevnts cnetering -->
+                                        <div class="d2c_icon_wrapper"> 
+                                            <img src = "{{ url_for('static', filename=value.icon) }}" style="margin: auto auto; max-width: 50px;  max-height: 50px; object-fit: contain; display: block">
+                                        </div>
+                                        {% if pub_groups|length > 1 %}<span class="card-tag">{{ group.label }}</span>{% endif %}
+                                        <h4>{{value.title}}</h4>
+                                        <p>{{value.year}}</p>
+                                     <p style="color: whitesmoke; opacity: 75%;">View Publication →</p>
+
+                                    </div>
+                                    </a>
+
+                                </div>
+
+                                {% endfor %}
+                    {% endfor %}
+                   </div>
+                </div>
+            </section>
+        {% endif %}
+
+        {% if projects %}
+        <hr class="soft-divider" style="border:0; height:3px; width:64px; margin:2.5rem auto; opacity:.5; border-radius:3px; background:linear-gradient(90deg, rgba(255,255,255,0), #fff 30%, #fff 70%, rgba(255,255,255,0));">
+
+            <section class="d2c_service_wrapper" id="project">
+
+                <div class="container">
+                    <H2 style="color: white;">Projects</H2>
+                 <div class="row card-tag-row">
+                    {% for group in project_groups %}
+                                {% for value in group.entries %}
+        <div class="col-xl-4" style="padding: 12pt;">
+            <a href="{{ url_for('project_detail', id=value.id) }}" style="text-decoration: none; color: inherit;">
+                <div class="d2c_card_wrapper" style="text-align: left;margin: 12pt auto;">
+                    <div class="d2c_icon_wrapper">
+                        <img src="{{ url_for('static', filename=value.icon) }}"
+                             style="margin:auto; max-width:50px; max-height:50px; object-fit:contain; display:block;">
+                    </div>
+                    {% if project_groups|length > 1 %}<span class="card-tag">{{ group.label }}</span>{% endif %}
+                    <h4>{{ value.title }}</h4>
+                    <p style="color: whitesmoke; opacity: 75%;">View Project →</p>
+
+                </div>
+            </a>
+        </div>
+                                {% endfor %}
+                    {% endfor %}
+                 </div>
+                </div>
+            </section>
+        {% endif %}
+
+{% if skills %}
+        <hr class="soft-divider" style="border:0; height:3px; width:64px; margin:2.5rem auto; opacity:.5; border-radius:3px; background:linear-gradient(90deg, rgba(255,255,255,0), #fff 30%, #fff 70%, rgba(255,255,255,0));">
+
+
+            <section class="d2c_service_wrapper" id="skills">
+
+                <div class="container">
+                                        <H2 style="color: white;">Skills</H2>
+
+
+                    <div class="row">
+
+                                {% for value in skills %}
+                                <div class="col-xl-4" style="padding: 12pt;">
+                                    <div class="d2c_card_wrapper" style="text-align: left; margin: 12pt auto;">
+                                        <!-- icon wrapper prevnts cnetering -->
+                                        <div class="d2c_icon_wrapper"> 
+                                            <img src = "{{ url_for('static', filename=value.icon) }}" style="margin: auto auto; max-width: 50px;  max-height: 50px; object-fit: contain; display: block">
+                                        </div>
+                                        <h6>{{value.skill}}</h6>
+                                    </div>
+                                </div>
+                                {% endfor %}                                
+                            </div>
+                </div>
+            </section>
+        {% endif %}
+
+{% if certifications %}
+        <hr class="soft-divider" style="border:0; height:3px; width:64px; margin:2.5rem auto; opacity:.5; border-radius:3px; background:linear-gradient(90deg, rgba(255,255,255,0), #fff 30%, #fff 70%, rgba(255,255,255,0));">
+
+            <section class="d2c_service_wrapper" id="certifications">
+                <div class="container">
+                    <H2 style="color: white;">Certifications</H2>
+
+                    <div class="row card-tag-row">
+                        {% for value in certifications %}
+                        <div class="col-xl-4 col-md-6" style="padding: 12pt;">
+                            <div class="d2c_card_wrapper cert-card" style="text-align: left; margin: 12pt auto;">
+                                <span class="card-tag" style="align-self: flex-start;">{{ value.company }}</span>
+                                <h4>{{ value.title }}</h4>
+                                {% if value.credential %}<p class="cert-meta">{{ value.credential }}</p>{% endif %}
+                                {% if value.issued %}<p class="cert-meta">Issued {{ value.issued }}</p>{% endif %}
+                                {% if value.file %}<a class="cert-link" href="{{ url_for('static', filename='uploads/certificates/' ~ value.file) }}" data-cert="{{ 'pdf' if value.is_pdf else 'image' }}" data-title="{{ value.title }}">View certificate <span aria-hidden="true">&rarr;</span></a>
+                                {% elif value.link %}<a class="cert-link" href="{{ value.link }}" target="_blank" rel="noopener">View certificate <span aria-hidden="true">&rarr;</span></a>{% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+
+            <!-- certificate viewer: the certificate opens here, on the site -->
+            <div class="cert-viewer" id="certViewer" hidden role="dialog" aria-modal="true" aria-label="Certificate">
+                <div class="cert-viewer-box">
+                    <div class="cert-viewer-bar">
+                        <span class="cert-viewer-title" id="certViewerTitle"></span>
+                        <a class="cert-viewer-dl" id="certViewerDl" href="#" download>Download</a>
+                        <button type="button" class="cert-viewer-close" id="certViewerClose" aria-label="Close">&times;</button>
+                    </div>
+                    <div class="cert-viewer-body" id="certViewerBody"></div>
+                </div>
+            </div>
+        {% endif %}
+
+            <!-- hero end -->
+        </div>
+        
+     
+    
+        <div class="d2c_shade_bg_wrapper">
+
+             
+           
+        </div>
+    
+        
+    
+
+    
+        <!-- newsletter section start -->
+             
+            <img src = "{{ url_for('static', filename=footer.banner) }}" width="100%">
+
+       
+    
+        <!-- footer section start -->
+        <footer class="d2c_footer_wrapper" id="myfooter">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-9">
+                        <img src="{{ url_for('static', filename=footer.footerlogo) }}" class="img-fluid w-100 mb-4" style="max-width: fit-content; max-height: 80px;" alt="Footer Logo">
+                        <p>{{footer.text | safe}}</p>
+                        
+                    </div> 
+                    <div class="col-lg-3" style=" margin: 0px auto;">
+                       <ul class="d2c_social_link list-group list-group-horizontal">
+                          
+                            <li>
+                                <a href="{{misc.linkedin}}" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+                            </li>
+                            <li>
+                                <a href="{{misc.github}}" target="_blank"><i class="fab fa-github"></i></a>
+                            </li>
+                            <li>
+                                <a href="{{misc.instagram}}" target="_blank"><i class="fab fa-instagram"></i></a>
+                            </li>
+                            <li>
+                                <a href="{{misc.topmate}}" target="_blank"><img src="{{ url_for('static', filename='assets/images/topmate-dark.png') }}" alt="Topmate" style="width:24px; height:24px;">
+</a>
+                            </li>
+                            <li>
+                                <a href="mailto:{{misc.email}}" target="_blank"><i class="fas fa-envelope"></i></a>
+                            </li>
+                        </ul>
+                    </div>              
+                    
+                    
+                </div>
+                <div class="d2c_copy_wrapper">
+                    <h4 class="text-center">© 2025-{{footer.year}} {{footer.copyright}}. All Right Reserved</h4>
+                </div>
+            </div>
+        </footer>
+        <!-- footer section end -->
+
+        <!--   Scroll Button Start   -->
+        <div id="scrollBtn">
+            <a href="#">
+                <i class="fas fa-chevron-up"></i>
+            </a>
+        </div>
+        <!--   Scroll Button  End   -->
+    </main>
+    
+
+    
+    <!-- js cdn -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- bootstrap js -->
+
+    
+    <script src="{{ url_for('static', filename='lib/bootstrap-5/js/bootstrap.bundle.min.js') }}"></script>
+    <!-- fancybox Image -->
+    <script  src="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.min.js"></script>
+    <!-- Slider JS Link -->
+     
+    <script src="{{ url_for('static', filename='lib/slick-1.8.1/slick/slick.min.js') }}"></script>
+    <!-- main js -->
+         <script src="{{ url_for('static', filename='assets/js/main.js') }}"></script>
+         
+    <script src="{{ url_for('static', filename='assets/js/section-flow.js') }}"></script>
+</body>
+</html>

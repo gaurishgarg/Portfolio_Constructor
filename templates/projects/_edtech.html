@@ -1,0 +1,64 @@
+{# Template "Educational Technology": learning-design write-up.  Sections without content are skipped. #}
+{% from '_detail_macros.html' import html_section, text_section, image_row, highlight_cards, heading %}
+
+{% if project.userpersonaimage or project.userquote %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading('Learner Profile') }}
+    <div class="row align-items-center">
+      <div class="col-lg-2">
+        <div class="d-flex align-items-center justify-content-center" style="margin: 12pt auto; height: 125pt;">
+          {% if project.userpersonaimage %}<img src="{{ url_for('static', filename=project.userpersonaimage) }}" style="height: 130pt; max-width: 100%; object-fit: contain; display: block" alt="">{% endif %}
+        </div>
+      </div>
+      <div class="col-lg-10">
+        <div class="d2c_card_wrapper d-flex align-items-center justify-content-center" style="margin: 12pt auto; min-height: 130pt; font-style: italic;">
+          <p style="color: white;">"{{ project.userquote }}"</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{{ html_section('Learning Problem / Gap', project.learning_problem) }}
+{{ html_section('Learning Objectives', project.learning_objectives) }}
+
+{% if project.target_learners or project.curriculum %}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    {{ heading('Learners & Curriculum') }}
+    <div class="row">
+      {% if project.target_learners %}
+      <div class="col-lg-6" style="padding: 12pt;">
+        <div class="d2c_card_wrapper" style="text-align: left;">
+          <h4>Target Learners</h4>
+          <p>{{ project.target_learners }}</p>
+        </div>
+      </div>
+      {% endif %}
+      {% if project.curriculum %}
+      <div class="col-lg-6" style="padding: 12pt;">
+        <div class="d2c_card_wrapper" style="text-align: left;">
+          <h4>Curriculum / Topic</h4>
+          <p>{{ project.curriculum }}</p>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{{ html_section('Pedagogical Framework', project.pedagogy) }}
+{{ html_section('Tangible / Embodied Artefact Design', project.tangible_design) }}
+{{ html_section('Learning Activity Design', project.activity_design) }}
+
+{{ image_row('Artefact & Classroom', [project.ss1, project.ss2, project.ss3, project.ss4], 250, 'col-lg-4 col-md-6') }}
+{{ image_row('In-session Screenshots', [project.sess1, project.sess2, project.sess3], 215, 'col-lg-4 col-md-6') }}
+{{ image_row('Components', [project.bb1, project.bb2, project.bb3, project.bb4], 130) }}
+
+{{ html_section('Deployment Context & Participants', project.deployment) }}
+{{ html_section('Assessment & Data Collected', project.assessment) }}
+{{ highlight_cards('Learning Outcomes', project.insight1, project.insight2) }}
+{{ html_section('Findings & Implications', project.findings) }}

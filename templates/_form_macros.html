@@ -1,0 +1,128 @@
+{# Form controls generated from schema.py - used by /edit (add forms) and by the project / publication edit pages. #}
+
+{% macro control(f, value='', uid='', required=False) -%}
+{%- if f.type == 'image' -%}
+<input class="form-control" type="file" id="{{ uid }}" name="{{ f.key }}" accept="image/*" {{ 'required' if required }}>
+{%- elif f.type in ('html', 'list') -%}
+<textarea class="form-control" id="{{ uid }}" name="{{ f.key }}" rows="{{ 4 if f.type == 'list' else 3 }}" {{ 'required' if required }}>{{ value }}</textarea>
+{%- elif f.type == 'url' -%}
+<input type="url" class="form-control" id="{{ uid }}" name="{{ f.key }}" value="{{ value }}" {{ 'required' if required }}>
+{%- else -%}
+<input type="text" class="form-control" id="{{ uid }}" name="{{ f.key }}" value="{{ value }}" {{ 'required' if required }}>
+{%- endif -%}
+{%- endmacro %}
+
+
+{# ---- add form: label + control for each field ------------------------------------------------------ #}
+{% macro add_fields(fields, prefix) %}
+{% for f in fields %}
+<div>
+  <label for="{{ prefix }}-{{ f.key }}" class="form-label">{{ f.label }}</label>
+  {{ control(f, '', prefix ~ '-' ~ f.key, f.required) }}
+  {% if f.help %}<div class="form-text">{{ f.help }}</div>{% endif %}
+</div>
+{% endfor %}
+{% endmacro %}
+
+
+{# ---- add form: video overview + 3D viewer, each behind a switch ------------------------------------- #}
+{% macro add_media(kind) %}
+<div class="border rounded p-3 my-3">
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" name="show_video" value="1" id="{{ kind }}-sw-video" data-switch="#{{ kind }}-blk-video">
+    <label class="form-check-label" for="{{ kind }}-sw-video">Include a video overview</label>
+  </div>
+  <div id="{{ kind }}-blk-video" style="display: none;">
+    <label for="{{ kind }}-video-url" class="form-label">Video link</label>
+    <input type="url" class="form-control" id="{{ kind }}-video-url" name="video_url" data-req placeholder="{{ schema.MEDIA[kind].video.placeholder }}">
+  </div>
+</div>
+
+<div class="border rounded p-3 my-3">
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" name="show_model" value="1" id="{{ kind }}-sw-model" data-switch="#{{ kind }}-blk-model">
+    <label class="form-check-label" for="{{ kind }}-sw-model">Include a 3D model viewer</label>
+  </div>
+  <div id="{{ kind }}-blk-model" style="display: none;">
+    <label for="{{ kind }}-model-file" class="form-label">Upload a 3D model (.glb / .gltf)</label>
+    <input class="form-control" type="file" id="{{ kind }}-model-file" name="model_file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json">
+    <label for="{{ kind }}-model-url" class="form-label">...or link to one</label>
+    <input type="url" class="form-control" id="{{ kind }}-model-url" name="model_url" placeholder="{{ schema.MEDIA[kind].model.placeholder }}">
+  </div>
+</div>
+{% endmacro %}
+
+
+{# ---- edit page: one small form per field (same pattern as before) ----------------------------------- #}
+{% macro edit_field(kind, entry, f) %}
+{% set base = '/updateproj/' if kind == 'project' else '/updatepub/' %}
+<div class="form-group mb-4">
+  <form method="POST" action="{{ base }}{{ f.key }}" {% if f.type == 'image' %}enctype="multipart/form-data"{% endif %}>
+    <input type="hidden" name="id" value="{{ entry.id }}">
+    <label for="f-{{ f.key }}">{{ f.label }}</label>
+    {% if f.type == 'image' and entry[f.key] %}
+    <div class="my-2"><img src="{{ url_for('static', filename=entry[f.key]) }}" class="img-thumbnail" style="max-width: 160px; max-height: 120px; object-fit: contain;" alt="Current"></div>
+    {% endif %}
+    {{ control(f, entry[f.key] if f.type != 'image' else '', 'f-' ~ f.key, f.type == 'image' or (f.required and f.type != 'image')) }}
+    {% if f.help %}<div class="form-text">{{ f.help }}</div>{% endif %}
+    <button class="btn btn-sm btn-primary mt-2">Update</button>
+  </form>
+</div>
+{% endmacro %}
+
+
+{# ---- edit page: switch + link/file for video and 3D ------------------------------------------------- #}
+{% macro edit_media(kind, entry) %}
+{% set ms = entry.model_src or '' %}
+{% set base = '/updateproj/media' if kind == 'project' else '/updatepub/media' %}
+<div class="form-group mb-4 border rounded p-3">
+  <form method="POST" action="{{ base }}">
+    <input type="hidden" name="id" value="{{ entry.id }}">
+    <input type="hidden" name="which" value="video">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="show" value="1" id="ev-show" {{ 'checked' if entry.show_video }}>
+      <label class="form-check-label fw-semibold" for="ev-show">Include a video overview</label>
+    </div>
+    <label for="ev-url" class="mt-2">Video link</label>
+    <input type="url" class="form-control" id="ev-url" name="url" value="{{ entry.video_url }}" placeholder="{{ schema.MEDIA[kind].video.placeholder }}">
+    <div class="form-text">Untick to hide the video without losing the link.</div>
+    <button class="btn btn-sm btn-primary mt-2">Update video</button>
+  </form>
+</div>
+
+<div class="form-group mb-4 border rounded p-3">
+  <form method="POST" action="{{ base }}" enctype="multipart/form-data">
+    <input type="hidden" name="id" value="{{ entry.id }}">
+    <input type="hidden" name="which" value="model">
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="show" value="1" id="em-show" {{ 'checked' if entry.show_model }}>
+      <label class="form-check-label fw-semibold" for="em-show">Include a 3D model viewer</label>
+    </div>
+    {% if entry.model_url %}<div class="form-text">Current model: {{ entry.model_url }}</div>{% endif %}
+    <label for="em-file" class="mt-2">Upload a new model (.glb / .gltf)</label>
+    <input class="form-control" type="file" id="em-file" name="file" accept=".glb,.gltf,model/gltf-binary,model/gltf+json">
+    <label for="em-url" class="mt-2">...or link to one</label>
+    <input type="url" class="form-control" id="em-url" name="url" value="{{ ms if ms.startswith(('http://', 'https://', '//')) }}" placeholder="{{ schema.MEDIA[kind].model.placeholder }}">
+    <button class="btn btn-sm btn-primary mt-2">Update 3D model</button>
+  </form>
+</div>
+{% endmacro %}
+
+
+{# ---- template picker on the edit page ---------------------------------------------------------------- #}
+{% macro edit_template(kind, entry) %}
+{% set base = '/updateproj/template' if kind == 'project' else '/updatepub/template' %}
+<div class="form-group mb-4">
+  <form method="POST" action="{{ base }}">
+    <input type="hidden" name="id" value="{{ entry.id }}">
+    <label for="f-template">Template</label>
+    <select class="form-select" id="f-template" name="template">
+      {% for key, label in schema.TEMPLATES %}
+      <option value="{{ key }}" {{ 'selected' if entry.template == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <div class="form-text">Changing the template changes which fields are shown. Anything you already filled in for another template is kept.</div>
+    <button class="btn btn-sm btn-primary mt-2">Update template</button>
+  </form>
+</div>
+{% endmacro %}

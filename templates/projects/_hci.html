@@ -1,0 +1,187 @@
+{# Your original design case-study layout (template "HCI & AR-VR") - sections unchanged. #}
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">User Profile</h3>
+<div class="row align-items-center">
+  <div class="col-lg-2">
+<div class="d-flex align-items-center justify-content-center" style="margin: 12pt auto; height: 125pt;">
+{% if project.userpersonaimage %}<img src = "{{ url_for('static', filename=project.userpersonaimage) }}" style="height: 130pt; object-fit: contain; display: block">{% endif %}
+
+
+</div>
+  </div>
+  <div class="col-lg-10">
+    <div class="d2c_card_wrapper d-flex align-items-center justify-content-center" style="margin: 12pt auto; height: 130pt; font-style: italic;">
+      <p style="color: white;">
+        "{{project.userquote}}"
+      </p>
+
+</div>
+  </div>
+</div>
+  </div>
+
+</section>
+
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Problem Statement</h3>
+<div class="row d2c_card_wrapper align-items-center" style="color: white;">
+  {{project.problemstatement | safe}}
+
+
+</div>
+  </div>
+
+</section>
+
+
+
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Design Challenge</h3>
+<div class="row d2c_card_wrapper align-items-center" style="color: white;">
+  {{project.designchallenge | safe}}
+
+
+</div>
+  </div>
+
+</section>
+
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Target Platform</h3>
+<div class="row">
+ <div class="col-auto">
+        {% if project.targetplatformimage %}<img src="{{ url_for('static', filename=project.targetplatformimage) }}"
+             style="height: 125pt; object-fit: contain;">{% endif %}
+      </div>
+
+</div>
+  </div>
+
+</section>
+
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Goal Statement</h3>
+<div class="row d2c_card_wrapper align-items-center">
+  
+    <div style="color: white;">
+      {{project.goalstatement | safe}}
+    </div>
+
+
+</div>
+  </div>
+
+</section>
+
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Scope</h3>
+<div class="row d2c_card_wrapper align-items-center">
+  
+      <div style="color: white;">
+      {{project.scope | safe}}
+    </div>
+
+
+</div>
+  </div>
+
+</section>
+
+<section class="d2c_service_wrapper">
+  <div class="container">
+    <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Concept</h3>
+<div class="row d2c_card_wrapper align-items-center">
+  
+      <div style="color: white;">
+      {{project.interactionconcept | safe}}
+    </div>
+
+
+</div>
+  </div>
+
+</section>
+
+<section>
+<div class="container">
+      <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Screenshots</h3>
+<div class="row">
+  <div class="col-lg-4 col-md-6 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.ss1 %}<img src="{{ url_for('static', filename=project.ss1) }}"
+             style="height: 250pt; object-fit: contain;">{% endif %}
+  </div>
+    <div class="col-lg-4 col-md-6 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.ss2 %}<img src="{{ url_for('static', filename=project.ss2) }}"
+             style="height: 250pt; object-fit: contain;">{% endif %}
+  </div>
+    <div class="col-lg-4 col-md-6 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.ss3 %}<img src="{{ url_for('static', filename=project.ss3) }}"
+             style="height: 250pt; object-fit: contain;">{% endif %}
+  </div>
+    <div class="col-lg-4 col-md-6 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.ss4 %}<img src="{{ url_for('static', filename=project.ss4) }}"
+             style="height: 250pt; object-fit: contain;">{% endif %}
+  </div>
+
+
+</div>
+</div>
+</section>
+
+
+
+<section>
+<div class="container">
+      <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Building Blocks</h3>
+<div class="row">
+  <div class="col-lg-3 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.bb1 %}<img src="{{ url_for('static', filename=project.bb1) }}"
+             style="height: 130pt; object-fit: contain;">{% endif %}
+  </div>
+    <div class="col-lg-3 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.bb2 %}<img src="{{ url_for('static', filename=project.bb2) }}"
+             style="height: 130pt; object-fit: contain;">{% endif %}
+  </div>
+    <div class="col-lg-3 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.bb3 %}<img src="{{ url_for('static', filename=project.bb3) }}"
+             style="height: 130pt; object-fit: contain;">{% endif %}
+  </div>
+
+
+    <div class="col-lg-3 d-flex justify-content-center align-items-center" style="padding: 12pt;">
+       {% if project.bb4 %}<img src="{{ url_for('static', filename=project.bb4) }}"
+             style="height: 130pt; object-fit: contain;">{% endif %}
+  </div>
+
+</div>
+</div>
+</section>
+
+<section class="d2c_service_wrapper">
+<div class="container">
+      <h3 style="text-align: justify; color: white; font-size: clamp(21pt, 4.2vw, 32pt);">Insights from User Experience</h3>
+<div class="row">
+  <div class="col-lg-3 d-flex justify-content-start align-items-center" style="padding: 12pt;">
+    <div class="d2c_card_wrapper">
+
+      {{project.insight1 | safe }}
+
+    </div>
+       
+  </div>
+    <div class="col-lg-3 d-flex justify-content-start align-items-center" style="padding: 12pt;">
+       <div class="d2c_card_wrapper">
+
+        {{project.insight2 | safe }}
+  
+    </div>
+</div>
+</div>
+</section>
+
