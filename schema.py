@@ -61,7 +61,7 @@ MODEL_EXTENSIONS = (".glb", ".gltf")
 # --------------------------------------------------------------------------
 # Extra columns shared by every template ("commercial artifacts" etc.)
 # --------------------------------------------------------------------------
-_ARTIFACT_HELP = "One per line:  Name | URL | Note   e.g.  My App on the Meta Quest Store | https://... | Released 2026"
+_ARTIFACT_HELP = "One per line:  Name | URL | Note   e.g.  Mitra on Meta Quest Store | https://... | Released 2026"
 
 PROJECT_COMMON = [
     F("role", "Role & Team", "text", help="e.g. Lead developer, team of 3"),

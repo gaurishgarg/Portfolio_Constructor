@@ -4,7 +4,7 @@
     <link rel="icon" href="data:,">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Portfolio editor</title>
+    <title>Gaurish Garg</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   </head>
@@ -83,6 +83,18 @@
           data-bs-toggle="collapse" data-bs-target="#artifact_section"
           aria-expanded="false" aria-controls="artifact_section" style="margin: 15px auto;">
           Toggle Indie Projects Section
+          </button>
+
+          <button class="btn btn-primary" type="button"
+          data-bs-toggle="collapse" data-bs-target="#ar_section"
+          aria-expanded="false" aria-controls="ar_section" style="margin: 15px auto;">
+          Toggle AR Card Section
+          </button>
+
+          <button class="btn btn-primary" type="button"
+          data-bs-toggle="collapse" data-bs-target="#photo_section"
+          aria-expanded="false" aria-controls="photo_section" style="margin: 15px auto;">
+          Toggle Gallery Section
           </button>
 
           <button class="btn btn-primary" type="button"
@@ -604,7 +616,7 @@
              <form method="POST" action="/submitartifact">
                 <div>
                   <label for="artifact_title" class="form-label">Title</label>
-                  <input type="text" class="form-control" id="artifact_title" name="title" placeholder="e.g. My App" required>
+                  <input type="text" class="form-control" id="artifact_title" name="title" placeholder="e.g. ThinkBlocks" required>
                 </div>
                 <div>
                   <label for="artifact_url" class="form-label">Link</label>
@@ -633,6 +645,128 @@
           <div class = "d-flex justify-content-center mt-3">
               <form method="POST" action="/submitartifactsorder">
               <input type="hidden" name="ordered_artifacts" id="ordered_ids_artifacts">
+              <button type="submit" class="btn btn-primary mt-3">Save Order</button>
+              </form>
+          </div>
+        </div>
+
+        <div id="ar_section" class="collapse mt-3">
+          <h3>AR scene (visiting card)</h3>
+          <p class="text-muted">What appears when someone scans your visiting card (<code>ar.html</code>). Until you save something here, MindAR's demo scene is used. Make the <code>.mind</code> file from your card artwork with the <a href="https://hiukim.github.io/mind-ar-js-doc/tools/compile" target="_blank" rel="noopener">MindAR image compiler</a>; the model is best as a single <code>.glb</code> file (keep it small, a few MB). Position, rotation and size are measured in card widths: the card is 1 wide, so <code>0 0.1 0</code> is a tenth of a card width up.</p>
+          <div class ="form-group">
+            <form method="POST" action="/submitar" id="ar_form" enctype="multipart/form-data">
+              <div>
+                <label for="ar_mind" class="form-label">Tracking file (.mind){% if ar_cfg and ar_cfg.mind_file %} - current: <code>{{ ar_cfg.mind_file }}</code>{% else %} - not set (demo card is used){% endif %}</label>
+                <input type="file" class="form-control" id="ar_mind" name="mind" accept=".mind">
+                <div class="form-text">Leave empty to keep the current one.</div>
+              </div>
+              <div>
+                <label for="ar_model" class="form-label">3D model (.glb or .gltf){% if ar_cfg and ar_cfg.model_file %} - current: <code>{{ ar_cfg.model_file }}</code>{% else %} - not set{% endif %}</label>
+                <input type="file" class="form-control" id="ar_model" name="model" accept=".glb,.gltf">
+                <div class="form-text">Leave empty to keep the current one. A .gltf that needs separate texture files will not work - export a .glb instead.</div>
+              </div>
+              <div>
+                <label for="ar_index" class="form-label">Which image of the .mind file it sits on (0 = the first)</label>
+                <input type="number" class="form-control" id="ar_index" name="target_index" min="0" max="50" value="{{ ar_cfg.target_index if ar_cfg else 0 }}">
+              </div>
+              <div>
+                <label for="ar_position" class="form-label">Position (x y z)</label>
+                <input type="text" class="form-control" id="ar_position" name="position" value="{{ ar_cfg.position if ar_cfg else '0 0 0' }}" required>
+              </div>
+              <div>
+                <label for="ar_rotation" class="form-label">Rotation in degrees (x y z)</label>
+                <input type="text" class="form-control" id="ar_rotation" name="rotation" value="{{ ar_cfg.rotation if ar_cfg else '0 0 0' }}" required>
+              </div>
+              <div>
+                <label for="ar_scale" class="form-label">Size (one number, or x y z)</label>
+                <input type="text" class="form-control" id="ar_scale" name="scale" value="{{ ar_cfg.scale if ar_cfg else '0.2 0.2 0.2' }}" required>
+              </div>
+              <div>
+                <label for="ar_anim" class="form-label">Animation</label>
+                <select class="form-select" id="ar_anim" name="anim">
+                  {% set cur = ar_cfg.anim if ar_cfg else 'none' %}
+                  <option value="none" {{ 'selected' if cur == 'none' }}>None</option>
+                  <option value="float" {{ 'selected' if cur == 'float' }}>Float up and down</option>
+                  <option value="spin" {{ 'selected' if cur == 'spin' }}>Spin around</option>
+                  <option value="pulse" {{ 'selected' if cur == 'pulse' }}>Pulse (grow and shrink a little)</option>
+                  <option value="clip" {{ 'selected' if cur == 'clip' }}>The model's own animation (from the .glb)</option>
+                  <option value="custom" {{ 'selected' if cur == 'custom' }}>Custom (A-Frame animation settings, below)</option>
+                </select>
+              </div>
+              <div>
+                <label for="ar_speed" class="form-label">Animation speed (1 = normal, 2 = twice as fast)</label>
+                <input type="number" class="form-control" id="ar_speed" name="anim_speed" min="0.1" max="10" step="0.1" value="{{ ar_cfg.anim_speed if ar_cfg else 1 }}">
+              </div>
+              <div>
+                <label for="ar_clip" class="form-label">Model animation name - only for "the model's own animation" (empty or * = play all)</label>
+                <input type="text" class="form-control" id="ar_clip" name="anim_clip" value="{{ ar_cfg.anim_clip if ar_cfg else '' }}" placeholder="e.g. Wave">
+              </div>
+              <div>
+                <label for="ar_custom" class="form-label">Custom animation - only for "Custom"</label>
+                <input type="text" class="form-control" id="ar_custom" name="anim_custom" value="{{ ar_cfg.anim_custom if ar_cfg else '' }}" placeholder="property: rotation; to: 0 360 0; dur: 5000; loop: true; easing: linear">
+                <div class="form-text">Written as in A-Frame's <code>animation</code> component.</div>
+              </div>
+              <div class="d-flex justify-content-center mt-3 gap-2">
+                <button type="submit" class="btn btn-primary">Save AR scene</button>
+                <a class="btn btn-secondary" href="/gallery.html?ar=1" target="_blank" rel="noopener">Test it (needs a camera)</a>
+              </div>
+            </form>
+            <form method="POST" action="/resetar" class="d-flex justify-content-center mt-2" onsubmit="return confirm('Go back to the demo scene and delete the uploaded AR files?');">
+              <button type="submit" class="btn btn-outline-danger btn-sm">Reset to the demo scene</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="photo_section" class="collapse mt-3">
+          <h3>Gallery (photo album)</h3>
+          <p class="text-muted">Pictures for the page-flip album on the Gallery page. They are resized to web size automatically and hidden data (camera, location) is removed when Pillow is installed (<code>pip install Pillow</code>). Only share photos you have the right to, and that others in them are happy to be shown.</p>
+          <div class ="form-group">
+             <form method="POST" action="/submitphoto" id="photo_form" enctype="multipart/form-data">
+                <input type="hidden" name="id" value="">
+                <div>
+                  <label for="photo_files" class="form-label">Pictures (JPG, PNG or WebP)</label>
+                  <input type="file" class="form-control" id="photo_files" name="photos" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple required data-new-required>
+                  <div class="form-text">Pick several at once to add many. When editing, leave this empty to keep the current picture.</div>
+                </div>
+                <div>
+                  <label for="photo_caption" class="form-label">Caption - optional (used when you add a single picture; edit the others afterwards)</label>
+                  <input type="text" class="form-control" id="photo_caption" name="caption" placeholder="e.g. Demonstrating Mitra at the Tools Lab">
+                </div>
+                <div>
+                  <label for="photo_taken" class="form-label">When - optional</label>
+                  <input type="text" class="form-control" id="photo_taken" name="taken" placeholder="e.g. Nov 2026">
+                </div>
+                <div>
+                  <label for="photo_category" class="form-label">Category - optional</label>
+                  <input type="text" class="form-control" id="photo_category" name="category" placeholder="e.g. Research, Conference, Campus">
+                </div>
+                <div>
+                  <label for="photo_insta" class="form-label">Instagram post or reel link - optional</label>
+                  <input type="url" class="form-control" id="photo_insta" name="insta" placeholder="https://www.instagram.com/reel/XXXXXXXXXXX/">
+                  <div class="form-text">Shown as a link under the picture in the album. Public posts only. Like the caption, it is used when you add a single picture; add it to the others with Edit.</div>
+                </div>
+                <div class="d-flex justify-content-center mt-3 gap-2">
+                  <button type="submit" class="btn btn-primary" id="photo_submit">Submit</button>
+                  <button type="button" class="btn btn-secondary d-none" id="photo_cancel">Cancel edit</button>
+                </div>
+             </form>
+          </div>
+
+          <div class="sortable-list" id="photos_list">
+            {% for value in photo_list %}
+            <div class="sortable-item d-flex justify-content-center align-items-center mt-3" draggable="true" data-id="{{ value.id }}">
+              <img src="{{ url_for('static', filename='uploads/gallery/' ~ value.file) }}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;margin-right:12px;">
+              <p class="justifytext">{{ value.caption or 'No caption' }}<small class="text-muted d-block">{{ value.meta }}</small>{% if value.insta %}<small class="d-block">Instagram: {{ value.insta }}</small>{% endif %}</p>
+              <button type="button" class="btn btn-secondary edit-btn" data-form="photo_form" data-item='{{ value.as_dict|tojson }}'>Edit</button>
+              <form method="POST" action="/deletephoto"> <input type="hidden" name="delete_photo" value="{{ value.id }}">
+ <button type="submit" class="btn btn-danger">Delete</button></form>
+            </div>
+            {% endfor %}
+            <br>
+          </div>
+          <div class = "d-flex justify-content-center mt-3">
+              <form method="POST" action="/submitphotosorder">
+              <input type="hidden" name="ordered_photos" id="ordered_ids_photos">
               <button type="submit" class="btn btn-primary mt-3">Save Order</button>
               </form>
           </div>
@@ -764,7 +898,7 @@
             <form method="POST" action="/syncgithub" class="d-flex flex-wrap align-items-end gap-2 justify-content-center">
               <div>
                 <label for="gh_user" class="form-label">GitHub username or profile link</label>
-                <input type="text" class="form-control" id="gh_user" name="username" value="{{ github_user }}" placeholder="e.g. your-github-username" required>
+                <input type="text" class="form-control" id="gh_user" name="username" value="{{ github_user }}" placeholder="e.g. gaurishgarg" required>
               </div>
               <button type="submit" class="btn btn-primary">Sync from GitHub</button>
             </form>
@@ -783,7 +917,7 @@
                 <h5 id="repo_heading" class="mb-3"></h5>
                 <div>
                   <label for="repo_title" class="form-label">Title - optional (the repository name is used when empty)</label>
-                  <input type="text" class="form-control" id="repo_title" name="title" placeholder="e.g. My Project - what it does">
+                  <input type="text" class="form-control" id="repo_title" name="title" placeholder="e.g. Mitra - spatial reasoning with Micro:bit">
                 </div>
                 <div>
                   <label for="repo_description" class="form-label">Description - optional (GitHub's own description is used when empty)</label>
@@ -799,6 +933,10 @@
                 <div>
                   <label for="repo_stack" class="form-label">Built with / tech stack - optional, comma separated (detected from GitHub topics, name and description when empty)</label>
                   <input type="text" class="form-control" id="repo_stack" name="stack" placeholder="e.g. Unity, C#, Micro:bit, OpenXR">
+                </div>
+                <div>
+                  <label for="repo_live" class="form-label">GitHub Pages link - optional (found automatically when the repository has Pages switched on; fill in to override)</label>
+                  <input type="url" class="form-control" id="repo_live" name="live" placeholder="https://gaurishgarg.github.io/your-repo/">
                 </div>
                 <div class="mt-2">
                   <div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="pinned" id="repo_pinned"><label class="form-check-label" for="repo_pinned">Pin to the top</label></div>
@@ -909,7 +1047,7 @@
     <script>
       /* "Edit" on a certification / conference: load it into the form above, save with the same button */
       (function () {
-        var labels = { cert_form: 'cert', conf_form: 'conf', edu_form: 'edu', repo_form: 'repo' };
+        var labels = { cert_form: 'cert', conf_form: 'conf', edu_form: 'edu', repo_form: 'repo', photo_form: 'photo' };
         function reset(form) {
           var key = labels[form.getAttribute('id')];   // (form.id would be the <input name="id">)
           form.reset(); form.elements['id'].value = '';

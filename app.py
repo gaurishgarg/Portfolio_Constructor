@@ -14,6 +14,14 @@ from database import *
 load_dotenv()
 app = Flask(__name__)
 
+
+@app.template_filter("linkedin_connect")
+def linkedin_connect(url):
+    """LinkedIn profile URL -> the 'send a connection request' dialog URL; anything else is returned unchanged."""
+    import re as _re
+    m = _re.search(r"linkedin\.com/in/([^/?#]+)", url or "")
+    return "https://www.linkedin.com/preload/custom-invite/?vanityName=" + m.group(1) if m else url
+
 load_pubs_flag = True
 
 app.secret_key = os.getenv("SECRET_KEY") 
@@ -40,6 +48,7 @@ def inject_site_state():
         "writings": bool(load_writing()),
         "conferences": bool(load_conferences()),
         "code": bool(load_repos(only_visible=True)),
+        "gallery": True,
         "certifications": bool(load_certifications()),
         "pages": bool(load_pages()),
     }
@@ -276,7 +285,7 @@ def editpoint():
         return render_template('edit.html', about = about, pubs = pubs, misc = misc, skills = skills, footer = footer, projects = projects, educations = educations, pages = pages, writings = writings, artifact_list = load_artifacts(),
                                certification_list = load_certifications(), conference_list = load_conferences(), conference_roles = CONFERENCE_ROLES,
                                repo_list = load_repos(), repo_categories = REPO_CATEGORIES, github_user = github_username(misc.github if misc else ''),
-                               education_statuses = EDUCATION_STATUSES)
+                               education_statuses = EDUCATION_STATUSES, photo_list = load_photos(), ar_cfg = load_ar_config())
     else:
         return render_template('edit.html')
     
@@ -316,6 +325,20 @@ def artifacts_page():
     footer = load_footer()
     artifacts = all_artifacts(visible(load_proj()), visible(load_pubs()))
     return render_template('artifacts.html', misc = misc, footer = footer, artifacts = artifacts)
+
+
+@app.route('/gallery.html')
+def gallery_page():
+    """Gallery tab: AR introduction (MindAR) for visitors with my visiting card."""
+    misc = load_misc()
+    footer = load_footer()
+    return render_template('gallery.html', misc = misc, footer = footer, photos = load_photos(), ar = load_ar_config())
+
+
+@app.route('/ar.html')
+def ar_page():
+    """Short, permanent address for the QR code on the visiting card: forwards to the gallery with the AR layer open."""
+    return render_template('ar.html')
 
 
 @app.route('/conferences.html')
@@ -366,7 +389,8 @@ def store_repo_route():
     try:
         store_repo(request.form.get("id") or None, request.form.get("title", ""), request.form.get("description", ""),
                    request.form.get("category", ""),
-                   request.form.get("pinned") is not None, request.form.get("hidden") is not None, request.form.get("stack", ""))
+                   request.form.get("pinned") is not None, request.form.get("hidden") is not None, request.form.get("stack", ""),
+                   request.form.get("live", ""))
     except ValueError as e:
         abort(400, str(e))
     return redirect("/edit")
@@ -392,6 +416,49 @@ def repo_order_submitted():
 @app.route("/deleterepo", methods=["POST"])
 def delete_repo():
     delete_id_repo(request.form["delete_repo"])
+    return redirect("/edit")
+
+
+@app.route("/submitar", methods=["POST"])
+def store_ar_route():
+    try:
+        store_ar_config(request.form, request.files.get("mind"), request.files.get("model"), app.config['UPLOAD_FOLDER'])
+    except ValueError as e:
+        abort(400, str(e))
+    return redirect("/edit")
+
+
+@app.route("/resetar", methods=["POST"])
+def reset_ar_route():
+    reset_ar_config(app.config['UPLOAD_FOLDER'])
+    return redirect("/edit")
+
+
+@app.route("/submitphoto", methods=["POST"])
+def store_photo_route():
+    try:
+        if request.form.get("id"):
+            store_photo(request.form["id"], request.form.get("caption", ""), request.form.get("taken", ""), request.form.get("category", ""),
+                        request.files.get("photos"), app.config['UPLOAD_FOLDER'], request.form.get("insta", ""))
+        else:
+            add_photos(request.files.getlist("photos"), request.form.get("caption", ""), request.form.get("taken", ""),
+                       request.form.get("category", ""), app.config['UPLOAD_FOLDER'], request.form.get("insta", ""))
+    except ValueError as e:
+        abort(400, str(e))
+    return redirect("/edit")
+
+
+@app.route("/submitphotosorder", methods=["POST"])
+def photo_order_submitted():
+    ordered_json = request.form.get("ordered_photos")
+    if ordered_json:
+        store_order_in_photos(json.loads(ordered_json))
+    return redirect("/edit")
+
+
+@app.route("/deletephoto", methods=["POST"])
+def delete_photo():
+    delete_id_photo(request.form["delete_photo"], app.config['UPLOAD_FOLDER'])
     return redirect("/edit")
 
 
@@ -564,7 +631,7 @@ def misc_section():
         logo = request.files["logo"]
         resume = request.files["resume"]   
         email = request.form["email"]
-        linkedin = request.form["instagram"]
+        linkedin = request.form["linkedin"]
         instagram = request.form["instagram"]
         topmate = request.form["topmate"]
         github = request.form["github"]

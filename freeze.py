@@ -44,6 +44,16 @@ def writing_detail():
 
 
 @freezer.register_generator
+def ar_page():
+    yield '/ar.html'
+
+
+@freezer.register_generator
+def gallery_page():
+    yield '/gallery.html'
+
+
+@freezer.register_generator
 def conferences_page():
     yield '/conferences.html'
 

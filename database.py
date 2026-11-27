@@ -219,9 +219,10 @@ _NEW_COLUMNS = {
     "Projects": {**_NEW_ENTRY_COLUMNS, "role": "TEXT DEFAULT ''", "timeline": "TEXT DEFAULT ''"},
     "Publications": {**_NEW_ENTRY_COLUMNS, "venue": "TEXT DEFAULT ''", "keywords": "TEXT DEFAULT ''"},
     "Writing": {"linkedin_url": "TEXT DEFAULT ''", "medium_url": "TEXT DEFAULT ''"},
+    "Photo": {"insta": "TEXT DEFAULT ''"},
     "Education": {"status": "TEXT DEFAULT 'Completed'"},
     "Certification": {"file": "TEXT DEFAULT ''"},
-    "Repo": {"stack": "TEXT DEFAULT ''"},
+    "Repo": {"stack": "TEXT DEFAULT ''", "has_pages": "INTEGER DEFAULT 0"},
 }
 
 
@@ -265,13 +266,20 @@ with sqlite3.connect(DB_PATH) as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS Education (id INTEGER PRIMARY KEY AUTOINCREMENT, degree TEXT NOT NULL, specialisation TEXT NOT NULL, grades TEXT NOT NULL, html TEXT, icon TEXT NOT NULL, Institute TEXT NOT NULL, display_order INTEGER)")
         conn.execute("CREATE TABLE IF NOT EXISTS Portfolio (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, page TEXT NOT NULL, display_order INTEGER)")
         conn.execute("CREATE TABLE IF NOT EXISTS Writing (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, url TEXT NOT NULL, display_order INTEGER)")
+        _artifact_table_is_new = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='Artifact'").fetchone() is None
         conn.execute("CREATE TABLE IF NOT EXISTS Artifact (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, url TEXT NOT NULL, note TEXT DEFAULT '', display_order INTEGER)")
+        if _artifact_table_is_new:
+            conn.execute("INSERT INTO Artifact (title, url, note) VALUES (?,?,?)",
+                         ("ThinkBlocks", "https://gaurishgarg.github.io/thinkblocks/",
+                          "A physical, play-based learning kit for children around 6 to 11, with puzzles, cards and interactive games that build reasoning and decision-making."))
         conn.execute("CREATE TABLE IF NOT EXISTS Certification (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, company TEXT NOT NULL, credential TEXT DEFAULT '', issued TEXT DEFAULT '', link TEXT DEFAULT '', file TEXT DEFAULT '', display_order INTEGER)")
         conn.execute("CREATE TABLE IF NOT EXISTS Conference (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, role TEXT NOT NULL, paper_title TEXT DEFAULT '', location TEXT DEFAULT '', held_on TEXT DEFAULT '', link TEXT DEFAULT '', display_order INTEGER)")
         conn.execute("CREATE TABLE IF NOT EXISTS Repo (id INTEGER PRIMARY KEY AUTOINCREMENT, full_name TEXT NOT NULL UNIQUE, name TEXT NOT NULL, url TEXT NOT NULL, "
                      "gh_description TEXT DEFAULT '', description TEXT DEFAULT '', title TEXT DEFAULT '', language TEXT DEFAULT '', stars INTEGER DEFAULT 0, forks INTEGER DEFAULT 0, "
                      "gh_homepage TEXT DEFAULT '', homepage TEXT DEFAULT '', topics TEXT DEFAULT '[]', category TEXT DEFAULT '', pinned INTEGER DEFAULT 0, hidden INTEGER DEFAULT 0, "
                      "is_fork INTEGER DEFAULT 0, archived INTEGER DEFAULT 0, pushed_at TEXT DEFAULT '', display_order INTEGER)")
+        conn.execute("CREATE TABLE IF NOT EXISTS ARScene (id INTEGER PRIMARY KEY, mind_file TEXT DEFAULT '', model_file TEXT DEFAULT '', target_index INTEGER DEFAULT 0, position TEXT DEFAULT '0 0 0', rotation TEXT DEFAULT '0 0 0', scale TEXT DEFAULT '0.2 0.2 0.2', anim TEXT DEFAULT 'none', anim_speed REAL DEFAULT 1, anim_clip TEXT DEFAULT '', anim_custom TEXT DEFAULT '')")
+        conn.execute("CREATE TABLE IF NOT EXISTS Photo (id INTEGER PRIMARY KEY AUTOINCREMENT, file TEXT NOT NULL, caption TEXT DEFAULT '', taken TEXT DEFAULT '', category TEXT DEFAULT '', display_order INTEGER)")
         _migrate(conn)
 
 
@@ -548,7 +556,7 @@ TECH_VOCAB = [
     ("Machine Learning", ("machinelearning", "ml", "deeplearning")),
     ("Data Analysis", ("pandas", "numpy", "dataanalysis", "statistics")),
     ("LaTeX", ("latex",)),
-    ("Learning Analytics", ("learninganalytics",)),
+    ("Learning Analytics", ("learninganalytics", "la-reflect", "lareflect")),
 ]
 # GitHub's detected language -> the technology it usually means (everything else is just a language and is left out of the stack)
 LANGUAGE_TECH = {"HTML": "HTML/CSS/JS", "CSS": "HTML/CSS/JS", "JavaScript": "HTML/CSS/JS", "TypeScript": "HTML/CSS/JS", "ShaderLab": "Unity", "HLSL": "Unity",
@@ -582,7 +590,7 @@ def detect_tech(name='', description='', topics=(), language=''):
 class Repo:
     """A GitHub repository shown on the Code page: what GitHub says + the things I curate (title, text, category, pin, hide)."""
     def __init__(self, id, full_name, name, url, gh_description='', description='', title='', language='', stars=0, forks=0,
-                 gh_homepage='', homepage='', topics='[]', category='', pinned=0, hidden=0, is_fork=0, archived=0, pushed_at='', stack=''):
+                 gh_homepage='', homepage='', topics='[]', category='', pinned=0, hidden=0, is_fork=0, archived=0, pushed_at='', stack='', has_pages=0):
         self.id, self.full_name, self.name, self.url = id, full_name, name, url
         self.gh_description, self.custom_description = gh_description or '', description or ''
         self.custom_title = title or ''
@@ -597,6 +605,7 @@ class Repo:
         self.is_fork, self.archived = bool(is_fork), bool(archived)
         self.pushed_at = pushed_at or ''
         self.custom_stack = stack or ''
+        self.has_pages = bool(has_pages)
 
     @property
     def tech_tags(self):
@@ -615,12 +624,27 @@ class Repo:
         return out
 
     @property
+    def pages_url(self):
+        """Link to the repository's GitHub Pages deployment, or '' when it has none: the address I typed in the editor, else the homepage
+        set on GitHub when that is a github.io address, else the standard address when GitHub reports that Pages is switched on."""
+        if self.custom_homepage.strip():
+            return self.custom_homepage.strip()
+        if "github.io" in self.gh_homepage.lower():
+            return self.gh_homepage.strip()
+        if self.has_pages:
+            owner = self.full_name.split("/")[0].lower()
+            if self.name.lower() == owner + ".github.io":            # a user site lives at the root
+                return "https://" + owner + ".github.io/"
+            return "https://" + owner + ".github.io/" + self.name + "/"
+        return ''
+
+    @property
     def category_or_other(self):
         return self.category or "Other"
 
     @property
     def title(self):
-        """My title if I set one, otherwise the repo name made readable (my_project -> my project)."""
+        """My title if I set one, otherwise the repo name made readable (Project_Mitra -> Project Mitra)."""
         return self.custom_title or re.sub(r'[-_]+', ' ', self.name).strip()
 
     @property
@@ -638,14 +662,14 @@ class Repo:
     @property
     def as_dict(self):
         return {"id": self.id, "name": self.name, "title": self.custom_title, "description": self.custom_description,
-                "category": self.category, "stack": self.custom_stack, "pinned": self.pinned, "hidden": self.hidden}
+                "category": self.category, "stack": self.custom_stack, "live": self.custom_homepage, "pinned": self.pinned, "hidden": self.hidden}
 
 
 # Starter categories for the Code page. A category is just a text label - type any other one in the editor.
 REPO_CATEGORIES = ["AR / VR & Games", "Tangible & Hardware", "Web & Apps", "Data & ML", "Research", "Coursework", "Tools & Scripts", "Other"]
 
 _CATEGORY_HINTS = [
-    ("Coursework", ("course", "assignment", "homework", "lab-", "-lab", "tutorial", "class", "semester")),
+    ("Coursework", ("course", "assignment", "homework", "lab-", "-lab", "tutorial", "class", "semester", "et-6", "cs-", "cs1", "cs2")),
     ("Tangible & Hardware", ("microbit", "micro-bit", "micro:bit", "arduino", "esp32", "raspberry", "iot", "sensor", "tangible", "3d-print", "hardware")),
     ("AR / VR & Games", ("unity", "unreal", "openxr", "xr", "vr", "ar-", "-ar", "quest", "hololens", "arcore", "game", "godot", "webxr", "aframe", "three")),
     ("Data & ML", ("machine-learning", "ml", "deep-learning", "pytorch", "tensorflow", "data", "jupyter", "notebook", "nlp", "analysis", "pandas")),
@@ -674,11 +698,11 @@ def guess_repo_category(name, language='', topics=(), description=''):
 
 
 _REPO_COLUMNS = ("id, full_name, name, url, gh_description, description, title, language, stars, forks, gh_homepage, homepage, "
-                 "topics, category, pinned, hidden, is_fork, archived, pushed_at, stack")
+                 "topics, category, pinned, hidden, is_fork, archived, pushed_at, stack, has_pages")
 
 
 def github_username(profile_link):
-    """'https://github.com/your-name' (or a bare name) -> 'your-name'."""
+    """'https://github.com/gaurishgarg' (or a bare name) -> 'gaurishgarg'."""
     m = re.search(r'github\.com/([A-Za-z0-9-]+)', profile_link or '')
     if m:
         return m.group(1)
@@ -712,16 +736,17 @@ def _save_repo_rows(conn, remote_repos):
             continue
         values = (r.get("name") or full.split("/")[-1], r.get("html_url") or "https://github.com/" + full, r.get("description") or '',
                   r.get("language") or '', int(r.get("stargazers_count") or 0), int(r.get("forks_count") or 0), r.get("homepage") or '',
-                  json.dumps(r.get("topics") or []), int(bool(r.get("fork"))), int(bool(r.get("archived"))), r.get("pushed_at") or '')
+                  json.dumps(r.get("topics") or []), int(bool(r.get("fork"))), int(bool(r.get("archived"))), r.get("pushed_at") or '',
+                  int(bool(r.get("has_pages"))))
         if conn.execute("SELECT 1 FROM Repo WHERE full_name = ?", (full,)).fetchone():
-            conn.execute("UPDATE Repo SET name=?, url=?, gh_description=?, language=?, stars=?, forks=?, gh_homepage=?, topics=?, is_fork=?, archived=?, pushed_at=? "
+            conn.execute("UPDATE Repo SET name=?, url=?, gh_description=?, language=?, stars=?, forks=?, gh_homepage=?, topics=?, is_fork=?, archived=?, pushed_at=?, has_pages=? "
                          "WHERE full_name=?", values + (full,))
             updated += 1
         else:
             category = guess_repo_category(values[0], values[3], r.get("topics") or [], values[2])
             hide = int(bool(r.get("fork")) or bool(r.get("archived")))      # forks / archived start hidden - un-hide the ones worth showing
             conn.execute("INSERT INTO Repo (full_name, name, url, gh_description, language, stars, forks, gh_homepage, topics, is_fork, archived, pushed_at, "
-                         "category, hidden) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (full,) + values + (category, hide))
+                         "has_pages, category, hidden) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (full,) + values + (category, hide))
             added += 1
     return added, updated
 
@@ -787,16 +812,19 @@ def _unique_tags(text):
     return out
 
 
-def store_repo(id, title='', description='', category='', pinned=False, hidden=False, stack=''):
+def store_repo(id, title='', description='', category='', pinned=False, hidden=False, stack='', homepage=''):
     """Save the curated side of a repo."""
     if not id:
         raise ValueError("Pick a repository with its Edit button first.")
     with sqlite3.connect(DB_PATH) as conn:
         if not conn.execute("SELECT 1 FROM Repo WHERE id = ?", (id,)).fetchone():
             raise ValueError("That repository is not in the list any more.")
-        conn.execute("UPDATE Repo SET title=?, description=?, category=?, pinned=?, hidden=?, stack=? WHERE id=?",
+        homepage = (homepage or '').strip()
+        if homepage and not re.match(r'^https?://', homepage, re.I):
+            raise ValueError("The live-site link must start with http:// or https://")
+        conn.execute("UPDATE Repo SET title=?, description=?, category=?, pinned=?, hidden=?, stack=?, homepage=? WHERE id=?",
                      ((title or '').strip(), (description or '').strip(), (category or '').strip(), int(bool(pinned)), int(bool(hidden)),
-                      ", ".join(_unique_tags(stack)), id))
+                      ", ".join(_unique_tags(stack)), homepage, id))
 
 
 def toggle_repo(id, field):
@@ -816,6 +844,246 @@ def store_order_in_repos(ordered_list):
 def delete_id_repo(id_to_delete):
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute("DELETE FROM Repo WHERE id = ?", (id_to_delete,))
+
+
+# ---------------------------------------------------------------- Gallery (photo album)
+PHOTO_TYPES = {".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff", ".png": b"\x89PNG", ".webp": b"RIFF"}
+PHOTO_MAX_SIDE = 1600           # longest side of the stored web copy, in pixels
+
+
+class Photo:
+    """One picture of the Gallery album: the file (kept in static/uploads/gallery) and its caption, date text and category."""
+    def __init__(self, id, file, caption='', taken='', category='', insta=''):
+        self.id, self.file = id, file
+        self.caption, self.taken, self.category, self.insta = caption or '', taken or '', category or '', insta or ''
+
+    @property
+    def insta_text(self):
+        return "Watch the reel on Instagram" if "/reel/" in self.insta else "View the post on Instagram"
+
+    @property
+    def meta(self):
+        return " \u00b7 ".join(x for x in (self.taken, self.category) if x)
+
+    @property
+    def as_dict(self):
+        return {"id": self.id, "caption": self.caption, "taken": self.taken, "category": self.category, "insta": self.insta}
+
+
+def clean_insta_url(url):
+    """A link to a public Instagram post or reel -> https://www.instagram.com/p/<code>/ or .../reel/<code>/ ;
+    empty -> '' (no link); anything else -> ValueError."""
+    import re
+    url = (url or '').strip()
+    if not url:
+        return ''
+    m = re.match(r"^(?:https?://)?(?:www\.)?instagram\.com/(?:[A-Za-z0-9._]+/)?(p|reel|reels|tv)/([A-Za-z0-9_-]+)", url)
+    if not m:
+        raise ValueError("That does not look like a link to an Instagram post or reel (it should look like https://www.instagram.com/reel/XXXX/).")
+    return "https://www.instagram.com/%s/%s/" % ("reel" if m.group(1) != "p" else "p", m.group(2))
+
+
+def _save_photo_file(upload, uploads):
+    """Check an uploaded picture and store a web-sized copy under static/uploads/gallery; returns the file name.
+    With Pillow installed the copy is resized (longest side PHOTO_MAX_SIDE), turned upright and stripped of hidden data
+    (camera model, GPS position ...); without Pillow the original file is kept as it is."""
+    name = secure_filename(upload.filename or '')
+    stem, ext = os.path.splitext(name)
+    ext = ext.lower()
+    if ext not in PHOTO_TYPES:
+        raise ValueError("Pictures must be JPG, PNG or WebP (phone HEIC photos: export as JPG first).")
+    head = upload.stream.read(12)
+    upload.stream.seek(0)
+    if not head.startswith(PHOTO_TYPES[ext]) or (ext == ".webp" and head[8:12] != b"WEBP"):
+        raise ValueError("That file does not look like a real " + ext.lstrip('.').upper() + " picture.")
+    folder = os.path.join(uploads, "gallery")
+    os.makedirs(folder, exist_ok=True)
+    stamp = str(int(time.time() * 1000))
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        stored = stamp + "_" + name
+        upload.save(os.path.join(folder, stored))
+        return stored
+    try:
+        img = Image.open(upload.stream)
+        img = ImageOps.exif_transpose(img)
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGBA")
+            flat = Image.new("RGB", img.size, (255, 255, 255))
+            flat.paste(img, mask=img.split()[-1])
+            img = flat
+        else:
+            img = img.convert("RGB")
+        img.thumbnail((PHOTO_MAX_SIDE, PHOTO_MAX_SIDE))
+        stored = stamp + "_" + (stem or "photo") + ".jpg"
+        img.save(os.path.join(folder, stored), "JPEG", quality=85, optimize=True, progressive=True)    # new file: no EXIF carried over
+    except Exception as exc:
+        raise ValueError("That picture could not be read: " + str(exc)) from exc
+    return stored
+
+
+def _remove_photo_file(uploads, stored):
+    if stored:
+        try:
+            os.remove(os.path.join(uploads, "gallery", os.path.basename(stored)))
+        except OSError:
+            pass
+
+
+def add_photos(uploads_list, caption='', taken='', category='', uploads='static/uploads', insta=''):
+    """Add one or several pictures. The caption and the Instagram link are only used when exactly one picture is added."""
+    files = [f for f in (uploads_list or []) if f and f.filename]
+    if not files:
+        raise ValueError("Choose at least one picture.")
+    caption, taken, category = [(v or '').strip() for v in (caption, taken, category)]
+    insta = clean_insta_url(insta)
+    saved = [_save_photo_file(f, uploads) for f in files]
+    with sqlite3.connect(DB_PATH) as conn:
+        for stored in saved:
+            one = len(saved) == 1
+            conn.execute("INSERT INTO Photo (file, caption, taken, category, insta) VALUES (?,?,?,?,?)",
+                         (stored, caption if one else '', taken, category, insta if one else ''))
+    return len(saved)
+
+
+def store_photo(id, caption='', taken='', category='', upload=None, uploads='static/uploads', insta=''):
+    """Change a picture's texts and Instagram link (and optionally replace the picture itself)."""
+    caption, taken, category = [(v or '').strip() for v in (caption, taken, category)]
+    insta = clean_insta_url(insta)
+    new_file = _save_photo_file(upload, uploads) if (upload and upload.filename) else ''
+    with sqlite3.connect(DB_PATH) as conn:
+        old = conn.execute("SELECT file FROM Photo WHERE id = ?", (id,)).fetchone()
+        if not old:
+            raise ValueError("That picture is not in the list any more.")
+        conn.execute("UPDATE Photo SET caption=?, taken=?, category=?, insta=? WHERE id=?", (caption, taken, category, insta, id))
+        if new_file:
+            conn.execute("UPDATE Photo SET file=? WHERE id=?", (new_file, id))
+    if new_file:
+        _remove_photo_file(uploads, old[0])
+
+
+# ---- the AR scene shown when the visiting card is scanned: tracking file (.mind), 3D model and animation ----
+AR_MODEL_TYPES = {".glb": b"glTF", ".gltf": b"{"}
+AR_MAX_BYTES = 40 * 1024 * 1024
+AR_ANIMS = ("none", "float", "spin", "pulse", "clip", "custom")
+
+
+def _ar_vec(text, label, uniform_ok=False):
+    """'0.2 0.2 0.2' / '0, 0.1, 0' -> '0.2 0.2 0.2'. With uniform_ok one number means the same value on all three axes."""
+    parts = re.split(r"[\s,]+", (text or "").strip())
+    try:
+        nums = [float(p) for p in parts if p != ""]
+    except ValueError:
+        nums = []
+    if uniform_ok and len(nums) == 1:
+        nums = nums * 3
+    if len(nums) != 3 or any(abs(n) > 1e6 or n != n for n in nums):
+        raise ValueError("%s needs three numbers, for example 0 0.1 0%s." % (label, " (or one number for all three)" if uniform_ok else ""))
+    return " ".join(("%g" % n) for n in nums)
+
+
+def _save_ar_file(upload, uploads, allowed):
+    """Store an uploaded .mind / model file under static/uploads/ar and return its new name."""
+    name = secure_filename(upload.filename or '')
+    stem, ext = os.path.splitext(name)
+    ext = ext.lower()
+    if ext not in allowed:
+        raise ValueError("Unsupported file type %s (allowed: %s)." % (ext or "(none)", ", ".join(sorted(allowed))))
+    data = upload.read(AR_MAX_BYTES + 1)
+    if not data:
+        raise ValueError("%s is empty." % name)
+    if len(data) > AR_MAX_BYTES:
+        raise ValueError("%s is larger than %d MB; GitHub Pages and phones both prefer smaller files." % (name, AR_MAX_BYTES // 1048576))
+    magic = allowed[ext]
+    if magic and not data.startswith(magic):
+        raise ValueError("%s does not look like a %s file." % (name, ext.upper().lstrip('.')))
+    folder = os.path.join(uploads, "ar")
+    os.makedirs(folder, exist_ok=True)
+    stored = "%d_%s%s" % (int(time.time() * 1000), (stem or "file")[:40], ext)
+    with open(os.path.join(folder, stored), "wb") as f:
+        f.write(data)
+    return stored
+
+
+def _remove_ar_file(uploads, stored):
+    if stored:
+        path = os.path.join(uploads, "ar", os.path.basename(stored))
+        if os.path.isfile(path):
+            os.remove(path)
+
+
+def load_ar_config():
+    """The saved AR scene as a dict, or None when nothing was saved yet (the demo scene is used then)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM ARScene WHERE id = 1").fetchone()
+        return dict(row) if row else None
+
+
+def store_ar_config(form, mind_upload, model_upload, uploads='static/uploads'):
+    anim = form.get("anim", "none")
+    if anim not in AR_ANIMS:
+        raise ValueError("Unknown animation.")
+    try:
+        index = int(form.get("target_index") or 0)
+        speed = float(form.get("anim_speed") or 1)
+    except ValueError:
+        raise ValueError("Image number and speed must be numbers.")
+    if not 0 <= index <= 50:
+        raise ValueError("Image number must be between 0 and 50.")
+    if not 0.1 <= speed <= 10:
+        raise ValueError("Speed must be between 0.1 and 10.")
+    position = _ar_vec(form.get("position"), "Position")
+    rotation = _ar_vec(form.get("rotation"), "Rotation")
+    scale = _ar_vec(form.get("scale"), "Size", uniform_ok=True)
+    clip = (form.get("anim_clip") or "").strip()[:100]
+    custom = (form.get("anim_custom") or "").strip()[:300]
+    if anim == "custom" and not custom:
+        raise ValueError("Write the animation settings for the 'custom' choice, or pick another animation.")
+    new_mind = _save_ar_file(mind_upload, uploads, {".mind": b""}) if (mind_upload and mind_upload.filename) else ''
+    try:
+        new_model = _save_ar_file(model_upload, uploads, AR_MODEL_TYPES) if (model_upload and model_upload.filename) else ''
+    except ValueError:
+        _remove_ar_file(uploads, new_mind)
+        raise
+    old = load_ar_config() or {}
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("INSERT OR REPLACE INTO ARScene (id, mind_file, model_file, target_index, position, rotation, scale, anim, anim_speed, anim_clip, anim_custom) "
+                     "VALUES (1,?,?,?,?,?,?,?,?,?,?)",
+                     (new_mind or old.get("mind_file", ""), new_model or old.get("model_file", ""), index, position, rotation, scale, anim, speed, clip, custom))
+    if new_mind:
+        _remove_ar_file(uploads, old.get("mind_file"))
+    if new_model:
+        _remove_ar_file(uploads, old.get("model_file"))
+
+
+def reset_ar_config(uploads='static/uploads'):
+    old = load_ar_config() or {}
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("DELETE FROM ARScene")
+    _remove_ar_file(uploads, old.get("mind_file"))
+    _remove_ar_file(uploads, old.get("model_file"))
+
+
+def load_photos():
+    with sqlite3.connect(DB_PATH) as conn:
+        rows = conn.execute("SELECT id, file, caption, taken, category, insta FROM Photo "
+                            "ORDER BY COALESCE(display_order, 999999) ASC, id ASC").fetchall()
+        return [Photo(*v) for v in rows]
+
+
+def store_order_in_photos(ordered_list):
+    with sqlite3.connect(DB_PATH) as conn:
+        for item in ordered_list:
+            conn.execute("UPDATE Photo SET display_order = ? WHERE id = ?", (item['position'], item['id']))
+
+
+def delete_id_photo(id_to_delete, uploads='static/uploads'):
+    with sqlite3.connect(DB_PATH) as conn:
+        row = conn.execute("SELECT file FROM Photo WHERE id = ?", (id_to_delete,)).fetchone()
+        conn.execute("DELETE FROM Photo WHERE id = ?", (id_to_delete,))
+    _remove_photo_file(uploads, row[0] if row else '')
 
 
 def load_writing():
@@ -1189,39 +1457,31 @@ def load_misc():
 
 
 
+def _save_upload(f, uploads):
+    """Save an uploaded file with a timestamped name; return the stored name, or None if nothing was uploaded."""
+    if f and getattr(f, "filename", ""):
+        name = str(int(time.time() * 1000)) + secure_filename(f.filename)
+        f.save(os.path.join(uploads, name))
+        return name
+    return None
+
+
 def update_misc(loader, logo, resume,email, linkedin, instagram, topmate, github, uploads):
      with sqlite3.connect(DB_PATH) as conn:
 
          row_count = conn.execute("SELECT COUNT(*) FROM Miscellaneous").fetchone()[0]
-         print(row_count)
          if (row_count >= 1):
-            print("Row Count is More than 1")
             row = conn.execute("SELECT * FROM Miscellaneous LIMIT 1").fetchone()
             if row:
                 id = row[0]
-                if (resume and resume.filename != "") and (loader and loader.filename != "") and (logo and logo.filename != ""):
-                    timestamp = int(time.time() * 1000)  # milliseconds
-                    filename1 = str(timestamp) + secure_filename(resume.filename)
-                    resume_path1 = os.path.join(uploads, filename1)
-                    resume.save(resume_path1)
-                    resume_path1 = filename1
-
-
-                    timestamp = int(time.time() * 1000)  # milliseconds
-                    filename2 = str(timestamp) + secure_filename(loader.filename)
-                    loader_path1 = os.path.join(uploads, filename2)
-                    loader.save(loader_path1)
-                    loader_path1 = filename2
-
-                    timestamp = int(time.time() * 1000)  # milliseconds
-                    filename3 = str(timestamp) + secure_filename(logo.filename)
-                    logo_path1 = os.path.join(uploads, filename3)
-                    logo.save(logo_path1)
-                    logo_path1 = filename3
-
-
-                    # loader TEXT NOT NULL. logo TEXT NOT NULL, resume TEXT NOT NULL, email TEXT NOT NULL, linkedin TEXT NOT NULL, instagram TEXT NOT NULL, topmate TEXT NOT NULL
-                    conn.execute("UPDATE Miscellaneous SET loader = ?, logo = ?, resume = ?, email = ?, linkedin = ? , instagram = ? , topmate = ?, github = ? WHERE id = ?",(loader_path1, logo_path1, resume_path1, email, linkedin, instagram, topmate, github, id))
+                # text fields always update; each file only changes if a new one was uploaded
+                sets = ["email = ?", "linkedin = ?", "instagram = ?", "topmate = ?", "github = ?"]
+                vals = [email, linkedin, instagram, topmate, github]
+                for col, f in (("loader", loader), ("logo", logo), ("resume", resume)):
+                    saved = _save_upload(f, uploads)
+                    if saved:
+                        sets.append(col + " = ?"); vals.append(saved)
+                conn.execute("UPDATE Miscellaneous SET " + ", ".join(sets) + " WHERE id = ?", vals + [id])
          if (row_count == 0):
             print("Form was submittedd")
             if (resume and resume.filename != "") and (loader and loader.filename != "") and (logo and logo.filename != ""):
@@ -1275,30 +1535,18 @@ def update_footer(footerlogo, banner, text, copyright, uploads):
      with sqlite3.connect(DB_PATH) as conn:
 
          row_count = conn.execute("SELECT COUNT(*) FROM Footer").fetchone()[0]
-         print(row_count)
          if (row_count >= 1):
-            print("Row Count is More than 1")
             row = conn.execute("SELECT * FROM Footer LIMIT 1").fetchone()
             if row:
                 id = row[0]
-                if (footerlogo and footerlogo.filename != "") and (banner and banner.filename != ""):
-                    timestamp = int(time.time() * 1000)  # milliseconds
-                    filename1 = str(timestamp) + secure_filename(footerlogo.filename)
-                    footerlogo_path1 = os.path.join(uploads, filename1)
-                    footerlogo.save(footerlogo_path1)
-                    footerlogo_path1 = filename1
-
-
-                    timestamp = int(time.time() * 1000)  # milliseconds
-                    filename2 = str(timestamp) + secure_filename(banner.filename)
-                    banner_path1 = os.path.join(uploads, filename2)
-                    banner.save(banner_path1)
-                    banner_path1 = filename2
-
-
-
-                    # loader TEXT NOT NULL. logo TEXT NOT NULL, resume TEXT NOT NULL, email TEXT NOT NULL, linkedin TEXT NOT NULL, instagram TEXT NOT NULL, topmate TEXT NOT NULL
-                    conn.execute("UPDATE Footer SET logo = ?, banner = ?, text = ?, copyright = ? WHERE id = ?",(footerlogo_path1, banner_path1, text, copyright, id))
+                # text and copyright always update; logo / banner only if a new file was uploaded
+                sets = ["text = ?", "copyright = ?"]
+                vals = [text, copyright]
+                for col, f in (("logo", footerlogo), ("banner", banner)):
+                    saved = _save_upload(f, uploads)
+                    if saved:
+                        sets.append(col + " = ?"); vals.append(saved)
+                conn.execute("UPDATE Footer SET " + ", ".join(sets) + " WHERE id = ?", vals + [id])
          if (row_count == 0):
             if (footerlogo and footerlogo.filename != "") and (banner and banner.filename != ""):
                 timestamp = int(time.time() * 1000)  # milliseconds
@@ -1368,10 +1616,64 @@ def store_order_in_educations(ordered_list):
             conn.execute("UPDATE Education SET display_order = ? WHERE id = ?", (position, id))
 
 
-# ---- starter entries: none in the public template ----------------------------
+# ---- one-time starter entries (see seeds.py) ---------------------------------
 def _run_seeds():
-    """The public template ships without starter entries: a new database starts empty."""
-    return
+    import seeds
+    base = os.path.dirname(os.path.abspath(__file__))
+    uploads = os.path.join(base, "static", "uploads")
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS SeedLog (name TEXT PRIMARY KEY)")
+        done = {r[0] for r in conn.execute("SELECT name FROM SeedLog")}
+        already = conn.execute("SELECT 1 FROM Projects WHERE title LIKE '%Mitra%'").fetchone() is not None
+
+    if "constructor_project" not in done:
+        with sqlite3.connect(DB_PATH) as conn:
+            have = conn.execute("SELECT 1 FROM Projects WHERE title LIKE 'Portfolio Constructor%'").fetchone() is not None
+        if not have and all(os.path.exists(os.path.join(uploads, f)) for f in seeds.CONSTRUCTOR_FILES):
+            insert_entry("project", "tech", dict(seeds.CONSTRUCTOR_PROJECT))
+            have = True
+        if have:                      # (images not copied over yet -> skipped, and tried again on the next start)
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.execute("INSERT OR IGNORE INTO SeedLog (name) VALUES ('constructor_project')")
+
+    if "mitra_project" not in done:
+        if not already:
+            if not all(os.path.exists(os.path.join(uploads, f)) for f in seeds.MITRA_FILES):
+                return                  # images not copied over yet - try again on the next start
+            insert_entry("project", "edtech", dict(seeds.MITRA_PROJECT))
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("INSERT OR IGNORE INTO SeedLog (name) VALUES ('mitra_project')")
+
+    if "mitra_text_short" not in done:
+        with _conn() as conn:
+            row = conn.execute("SELECT id, data FROM Projects WHERE title LIKE '%Mitra%' ORDER BY id LIMIT 1").fetchone()
+        if row is not None:
+            try:
+                current = json.loads(row["data"] or "{}")
+            except ValueError:
+                current = {}
+            for key, long_text in seeds.MITRA_TEXT_LONG.items():
+                if current.get(key) == long_text:        # still the unedited first version -> condensed one
+                    update_field("project", row["id"], key, seeds.MITRA_TEXT_SHORT[key])
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("INSERT OR IGNORE INTO SeedLog (name) VALUES ('mitra_text_short')")
+
+    if "mitra_session_shots" not in done:
+        files = seeds.MITRA_SESSION_SHOTS
+        if not all(os.path.exists(os.path.join(uploads, f)) for f in files.values()):
+            return
+        with _conn() as conn:
+            row = conn.execute("SELECT id, data FROM Projects WHERE title LIKE '%Mitra%' ORDER BY id LIMIT 1").fetchone()
+        if row is not None:
+            try:
+                current = json.loads(row["data"] or "{}")
+            except ValueError:
+                current = {}
+            for key, filename in files.items():
+                if not current.get(key):             # never overwrite something the owner already set
+                    update_field("project", row["id"], key, filename)
+        with sqlite3.connect(DB_PATH) as conn:
+            conn.execute("INSERT OR IGNORE INTO SeedLog (name) VALUES ('mitra_session_shots')")
 
 
 _run_seeds()
