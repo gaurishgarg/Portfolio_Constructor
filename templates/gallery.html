@@ -397,7 +397,7 @@
         var C = CFG.demo ? DEMO : CFG;
         if (!C.target) C.target = DEMO.target;
         var overlay = document.getElementById('arOverlay'), stage = document.getElementById('arStage'),
-            msg = document.getElementById('arMsg'), msgText = document.getElementById('arMsgText'), probe = null;
+            msg = document.getElementById('arMsg'), msgText = document.getElementById('arMsgText'), probe = null, camErr = '';
 
         function say(text) { msgText.textContent = text; msg.hidden = false; }
         function toPortfolio() { location.replace(PORTFOLIO); }
@@ -458,17 +458,22 @@
             .then(function () { return C.anim === 'clip' ? loadAny(LIBS.extras) : null; })
             .then(function () { return loadAny(LIBS.mindar); })
             .then(function () {
-              releaseProbe();                                                   /* phones let only one thing use the camera: let go of ours so the AR view can have it (permission stays granted) */
-              return new Promise(function (go) { setTimeout(go, 400); });       /* a moment for the camera to be freed */
-            })
-            .then(function () {
+              /* Phones let only one thing use the camera, and some ask again for every request. So the camera we already have is handed
+                 to the AR view instead of letting it open a second one: its single request gets our stream. */
+              var md = navigator.mediaDevices, real = md.getUserMedia.bind(md);
+              md.getUserMedia = function (c) {
+                md.getUserMedia = real;                                         /* only the AR view's first request is answered this way */
+                var s = probe; probe = null;
+                if (s && s.getVideoTracks().some(function (t) { return t.readyState === 'live'; })) return Promise.resolve(s);
+                return real(c).catch(function (err) { camErr = err && err.name; throw err; });
+              };
               stage.innerHTML = sceneHtml(C); var sc = stage.querySelector('a-scene');
               sc.addEventListener('arReady', function () { msgText.textContent = 'Point your camera at my visiting card.'; msg.classList.add('hint'); msg.hidden = false; });
-              sc.addEventListener('arError', function (e) { var why = e && e.detail && e.detail.error; say('The camera could not be started by the AR view' + (why ? ' (' + why + ')' : '') + '. Close other apps or tabs that may be using the camera, then reload, or use the buttons below to see my portfolio.'); });
+              sc.addEventListener('arError', function (e) { var why = camErr || (e && e.detail && e.detail.error); say('The camera could not be started by the AR view' + (why ? ' (' + why + ')' : '') + '. Close other apps or tabs that may be using the camera, then reload, or use the buttons below to see my portfolio.'); });
               var found = stage.querySelector('[mindar-image-target]');
               if (found) found.addEventListener('targetFound', function () { msg.hidden = true; });               /* the model shows only while the card is seen */
             })
-            .catch(function (err) { say('The AR view could not be loaded' + (err && err.message ? ' (' + err.message.slice(0, 120) + ')' : '') + '. You can open my portfolio or the gallery with the buttons below.'); });
+            .catch(function (err) { releaseProbe(); say('The AR view could not be loaded' + (err && err.message ? ' (' + err.message.slice(0, 120) + ')' : '') + '. You can open my portfolio or the gallery with the buttons below.'); });
         }
 
         overlay.hidden = false; document.body.classList.add('ar-open');
@@ -481,16 +486,33 @@
         }
         say('Please allow camera access to see my visiting card come alive. Otherwise I will open my portfolio for you.');
         function refused(err) { return err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError' || err.name === 'SecurityError'); }
-        function ask(constraints, retry) {
-          navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
-            probe = stream; startAR();                    /* allowed: the probe stream is kept until AR has its own camera */
-          }, function (err) {
-            if (refused(err)) { toPortfolio(); return; }                         /* the visitor said no (or the browser blocks the camera for this site) */
-            if (retry) { ask({ video: true, audio: false }, false); return; }    /* e.g. no rear camera: try any camera */
-            say('The camera could not be started' + (err && err.name ? ' (' + err.name + ')' : '') + '. Use the buttons below to see my portfolio.');
+        function facing(stream) { var t = stream.getVideoTracks()[0], s = t && t.getSettings ? t.getSettings() : {}; return s.facingMode || ''; }
+        function backCamera() {                                                  /* the rear camera: asked for strictly first, then by name, then any camera */
+          var md = navigator.mediaDevices;
+          return md.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false }).catch(function (err) {
+            if (refused(err)) throw err;
+            return md.getUserMedia({ video: { facingMode: 'environment' }, audio: false });                     /* a phone that cannot be strict about it */
+          }).then(function (stream) {
+            if (facing(stream) !== 'user') return stream;                        /* rear camera (or unknown): done */
+            return md.enumerateDevices().then(function (list) {                  /* got the selfie camera: look for the rear one by its name */
+              var back = list.filter(function (d) { return d.kind === 'videoinput' && /back|rear|environment/i.test(d.label); })[0];
+              if (!back) return stream;
+              stream.getTracks().forEach(function (t) { t.stop(); });
+              return md.getUserMedia({ video: { deviceId: { exact: back.deviceId } }, audio: false }).catch(function () {
+                return md.getUserMedia({ video: true, audio: false });           /* that did not work either: any camera is better than none */
+              });
+            }).catch(function () { return stream; });
+          }).catch(function (err) {
+            if (refused(err)) throw err;
+            return md.getUserMedia({ video: true, audio: false });               /* e.g. a laptop: whatever camera there is */
           });
         }
-        ask({ video: { facingMode: 'environment' }, audio: false }, true);
+        backCamera().then(function (stream) {
+          probe = stream; startAR();                                             /* allowed: the stream is kept and handed to the AR view */
+        }, function (err) {
+          if (refused(err)) { toPortfolio(); return; }                           /* the visitor said no (or the browser blocks the camera for this site) */
+          say('The camera could not be started' + (err && err.name ? ' (' + err.name + ')' : '') + '. Use the buttons below to see my portfolio.');
+        });
       })();
     </script>
 
